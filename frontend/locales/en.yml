@@ -1,0 +1,7 @@
+en:
+  aspace_sitemap_job:
+    _singular: ArchivesSpace Sitemap Job
+    _plural: ArchviesSpace Sitemap Jobs
+  job:
+    types:
+      aspace_sitemap_job: ArchivesSpace Sitemap
