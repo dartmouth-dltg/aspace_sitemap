@@ -60,6 +60,13 @@ AppConfig[:aspace_sitemap_changefreq] = "yearly"
 AppConfig[:aspace_sitemap_types] = ['resource','archival_object','digital_object','agent_person','agent_family','agent_corporate_entity']
 ```
 
+## Potential Enhancements & Notes
+1. Allow the end user to configure the sitemap base url and the sitemap limit
+when initiating the job.
+2. The 'priority' key is not used in the sitemap since there is no mechanism in place to mark
+objects in the staff interface. Given the large number of objects that are typically
+published, it seems unlikely that 'priority' would be widely used.
+
 Joshua Shaw (<Joshua.D.Shaw@Dartmouth.EDU>)  
 Digital Library Technologies Group  
 Dartmouth College Library  

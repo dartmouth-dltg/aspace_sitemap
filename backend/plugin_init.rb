@@ -1,5 +1,5 @@
 # Google currently allows up to 50000 urls or up to a 50MB file size.
-AppConfig[:aspace_sitemap_limit] = 10000
+AppConfig[:aspace_sitemap_limit] = 50000
 # set the base url *with* a trailing slash
 AppConfig[:aspace_sitemap_baseurl] = "https://library.dartmouth.edu/sitemaps/"
 # set the meta tag from Google to verify site ownership

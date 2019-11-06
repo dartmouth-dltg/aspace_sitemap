@@ -34,7 +34,7 @@ class AspaceSitemapRunner < JobRunner
       # open with the OutputStream class to initialize the zip struture correctly
       Zip::OutputStream.open(zip_file) { |zos| }
 
-      # iterate through the sitemap piecesand build our xml files
+      # iterate through the sitemap pieces and build our xml files
       sitemap_parts.each_with_index do |sitemap,k|
         files[k] = Tempfile.new(["aspace_sitemap_#{timestamp}_part_#{k}", ".xml"])
       
@@ -45,7 +45,6 @@ class AspaceSitemapRunner < JobRunner
                 xml.loc entry[:loc]
                 xml.lastmod entry[:lastmod]
                 xml.changefreq entry[:changefreq]
-                xml.priority entry[:priority]
               }
             end
           }
@@ -109,9 +108,8 @@ class AspaceSitemapRunner < JobRunner
     end
     row[:lastmod] = row[:lastmod].strftime("%Y-%m-%d")
     row[:changefreq] = AppConfig.has_key?(:aspace_sitemap_changefreq)? AppConfig[:aspace_sitemap_changefreq] : "yearly"
-    row[:priority] = "0.5"
     
-    #remove columns we don't need
+    # remove columns we don't need
     row.delete(:id)
     row.delete(:repo_id)
     row.delete(:publish)

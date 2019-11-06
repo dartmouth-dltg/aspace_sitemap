@@ -1,9 +1,7 @@
 en:
   aspace_sitemap_job:
-    _singular: ArchivesSpace Sitemap Job
-    _plural: ArchivesSpace Sitemap Jobs
-    sitemap_base_url: Base URL and path where sitemap will be hosted?
-    sitemap_limit: Number of items to include in each sitemap (optional)?
+    _singular: ArchivesSpace PUI Sitemap Job
+    _plural: ArchivesSpace PUI Sitemap Jobs
   job:
     types:
-      aspace_sitemap_job: ArchivesSpace Sitemap
+      aspace_sitemap_job: ArchivesSpace PUI Sitemap
