@@ -1,7 +1,9 @@
 en:
   aspace_sitemap_job:
     _singular: ArchivesSpace Sitemap Job
-    _plural: ArchviesSpace Sitemap Jobs
+    _plural: ArchivesSpace Sitemap Jobs
+    sitemap_base_url: Base URL and path where sitemap will be hosted?
+    sitemap_limit: Number of items to include in each sitemap (optional)?
   job:
     types:
       aspace_sitemap_job: ArchivesSpace Sitemap

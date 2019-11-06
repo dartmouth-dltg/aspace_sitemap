@@ -1,1 +1,4 @@
-<input type="hidden" name="aspace_sitemap_job[format]" value="xml" />
+<p>This job will generate one or more sitemap files together with an index file if there is more than one sitemap.
+The files will be packaged into a zip file that can then be moved to whatever server location you use for storing sitemap files.</p>
+<p>The sitemap base url is set to: <pre><%= "#{AppConfig[:aspace_sitemap_baseurl]}" %></pre> To change this, edit: <pre>aspace_sitemap/backend/plugin_int.rb</pre>
+<%= form.hidden_input "format", "zip" %>
