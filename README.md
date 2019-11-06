@@ -60,6 +60,6 @@ AppConfig[:aspace_sitemap_changefreq] = "yearly"
 AppConfig[:aspace_sitemap_types] = ['resource','archival_object','digital_object','agent_person','agent_family','agent_corporate_entity']
 ```
 
-Joshua Shaw (<Joshua.D.Shaw@Dartmouth.EDU>)
-Digital Library Technologies Group
-Dartmouth College Library
+Joshua Shaw (<Joshua.D.Shaw@Dartmouth.EDU>)  
+Digital Library Technologies Group  
+Dartmouth College Library  
