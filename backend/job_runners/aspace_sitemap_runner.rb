@@ -101,7 +101,7 @@ class AspaceSitemapRunner < JobRunner
   end
   
   def fix_row(row)
-    # agents ahve a different location string pattern
+    # agents have a different location string pattern
     if ['people','families','corporate_entities'].include?(row[:source])
       row[:loc] = ["#{AppConfig[:public_proxy_url]}","agents",row[:source],row[:id]].join("/")
     else
@@ -155,8 +155,8 @@ class AspaceSitemapRunner < JobRunner
     
    return queries.compact.join("UNION")
     
-    #"
-    #(SELECT
+    # query_string will become something like the below
+    #"(SELECT
     #  publish,
     #  repo_id,
     #  id,
@@ -220,8 +220,7 @@ class AspaceSitemapRunner < JobRunner
     #FROM
     #  agent_corporate_entity
     #WHERE
-    #  publish = 1)
-    #"
+    #  publish = 1)"
   end
   
 end
