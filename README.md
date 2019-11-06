@@ -1,8 +1,6 @@
-ArchivesSpace Sitemap Generation for the PUI
-==================================
+# ArchivesSpace Sitemap Generation for the PUI
 
-Getting started
--------------
+## Getting started
 
 Download and unpack the latest release of the plugin into your
 ArchivesSpace plugins directory:
@@ -15,16 +13,19 @@ ArchivesSpace plugins directory:
 
 Add the plugin name to the list of enabled plugins in `config/config.rb`:
 
-
-
-Configure the plugin by updating 
 ```
-backend/plugin_init.rb
+AppConfig[:plugins] = ['some_plugin','aspace_sitemap']
 ```
-modified as appropriate to
-your local situation
 
-1) Set the limit onthe number of entries within each sitemap. 
+## What does it do?
+The plugin adds a new job that generates a sitemap (or sitemaps with a sitemap index)
+for the PUI. There are a number of configuration options
+
+## Configuration
+
+Configure the plugin by editing `backend/plugin_init.rb` modified as appropriate.
+
+1) Set the limit on the number of entries within each sitemap. 
 If the total umber of published objects is larger than the limit, 
 multiple sitemaps together with a sitemap index file will be generated.
 Google allows 50000 entries or 50MB per file. Each entry is fairly lean,
@@ -34,7 +35,7 @@ so should not exceed the 50MB limit even when set to 50000 entries per sitemap.
 # Google currently allows up to 50000 urls or up to a 50MB file size.
 AppConfig[:aspace_sitemap_limit] = 50000
 ```
-2) Set the base url for where you will place the sitemaps and sitempa index file
+2) Set the base url for where you will place the sitemaps and sitemap index file
 ```
 # set the base url *with* a trailing slash
 AppConfig[:aspace_sitemap_baseurl] = "https://library.dartmouth.edu/sitemaps/"
@@ -59,8 +60,6 @@ AppConfig[:aspace_sitemap_changefreq] = "yearly"
 AppConfig[:aspace_sitemap_types] = ['resource','archival_object','digital_object','agent_person','agent_family','agent_corporate_entity']
 ```
 
-Joshua Shaw (<Joshua.D.Shaw@Dartmouth.EDU>)  
-Digital Library Technologies Group  
-Dartmouth College Library  
-
----
+Joshua Shaw (<Joshua.D.Shaw@Dartmouth.EDU>)
+Digital Library Technologies Group
+Dartmouth College Library
