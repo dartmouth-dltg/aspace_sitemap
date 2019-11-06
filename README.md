@@ -23,7 +23,8 @@ for the PUI. There are a number of configuration options
 
 ## Configuration
 
-Configure the plugin by editing `backend/plugin_init.rb` modified as appropriate.
+Configure the plugin by editing your `config.rb` file with the 
+following entries - modified as appropriate.
 
 1) Set the limit on the number of entries within each sitemap. 
 If the total umber of published objects is larger than the limit, 
