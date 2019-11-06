@@ -13,6 +13,10 @@ ArchivesSpace plugins directory:
     $ unzip ...
 ```
 
+Add the plugin name to the list of enabled plugins in `config/config.rb`:
+
+
+
 Configure the plugin by updating 
 ```
 backend/plugin_init.rb
@@ -46,6 +50,13 @@ AppConfig[:google_verification_meta_tag] = "your_verification_meta_tag"
 # set typical update frequency of urls, valid values can be found in the sitemap.org docs: 
 # values include: always, hourly, daily, weekly, monthly, yearly, never
 AppConfig[:aspace_sitemap_changefreq] = "yearly"
+```
+
+5) List the types of objects you wish to include in the sitemap
+```
+# list the objects/types you wish to include in the sitemap
+# Allowable types are: ['resource','archival_object','digital_object','agent_person','agent_family','agent_corporate_entity']
+AppConfig[:aspace_sitemap_types] = ['resource','archival_object','digital_object','agent_person','agent_family','agent_corporate_entity']
 ```
 
 Joshua Shaw (<Joshua.D.Shaw@Dartmouth.EDU>)  
