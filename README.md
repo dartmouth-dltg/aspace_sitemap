@@ -67,6 +67,7 @@ when initiating the job.
 2. The 'priority' key is not used in the sitemap since there is no mechanism in place to mark
 objects in the staff interface. Given the large number of objects that are typically
 published, it seems unlikely that 'priority' would be widely used.
+3. Add an option to use slug/human readable urls if that option is enabled in config.rb. Since these slugs are based on **changeable** metadata, there is a risk associated with the use of these in the sitemap files.
 
 Joshua Shaw (<Joshua.D.Shaw@Dartmouth.EDU>)  
 Digital Library Technologies Group  
