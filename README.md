@@ -27,7 +27,7 @@ Configure the plugin by editing your `config.rb` file with the
 following entries - modified as appropriate.
 
 1) Set the limit on the number of entries within each sitemap. 
-If the total umber of published objects is larger than the limit, 
+If the total number of published objects is larger than the limit, 
 multiple sitemaps together with a sitemap index file will be generated.
 Google allows 50000 entries or 50MB per file. Each entry is fairly lean,
 so should not exceed the 50MB limit even when set to 50000 entries per sitemap.
@@ -38,8 +38,8 @@ AppConfig[:aspace_sitemap_limit] = 50000
 ```
 2) Set the base url for where you will place the sitemaps and sitemap index file
 ```
-# set the base url *with* a trailing slash
-AppConfig[:aspace_sitemap_baseurl] = "https://library.dartmouth.edu/sitemaps/"
+# set the base url *with* a trailing slash - e.g. 'https://library.dartmouth.edu/sitemaps/'
+AppConfig[:aspace_sitemap_baseurl] = "your_sitemap_base_url"
 ```
 3) Google requires verification that you own the site. 
 One way is by a verification meta tag.
