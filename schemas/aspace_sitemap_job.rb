@@ -24,26 +24,13 @@
        "sitemap_use_slugs" => {
         "type" => "boolean",
       },
-      "sitemap_types_resource" => {
-        "type" => "boolean",
-      },
-      "sitemap_types_accession" => {
-        "type" => "boolean",
-      },
-      "sitemap_types_archival_object" => {
-        "type" => "boolean",
-      },
-      "sitemap_types_agent_person" => {
-        "type" => "boolean",
-      },
-      "sitemap_types_agent_family" => {
-        "type" => "boolean",
-      },
-      "sitemap_types_agent_corporate_entity" => {
-        "type" => "boolean",
-      },
-      "sitemap_types_digital_object" => {
-        "type" => "boolean",
+      "sitemap_types" => {
+        "type" => "array",
+        "ifmissing" => "error",
+        "minItems" => 1,
+        "items" => {
+          "type" => "string"
+        }
       }
     }
   }
