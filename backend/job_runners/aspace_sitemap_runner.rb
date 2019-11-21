@@ -1,5 +1,6 @@
 require 'zip'
 require 'date'
+require 'nokogiri'
 
 class AspaceSitemapRunner < JobRunner
   
@@ -7,10 +8,38 @@ class AspaceSitemapRunner < JobRunner
   
   def run
     
-    # these could become user set in the frontend, but not right now
-    sitemap_limit = AppConfig.has_key?(:aspace_sitemap_limit) ? AppConfig[:aspace_sitemap_limit] : 50000
-    sitemap_index_base_url = AppConfig.has_key?(:aspace_sitemap_baseurl) ? AppConfig[:aspace_sitemap_baseurl] : "https://change.to.my.site.baseurl/"
+    #rollup the sitemap_types into one array
+    allowed_sitemap_types = ['resource','accession','archival_object','digital_object','agent_person','agent_family','agent_corporate_entity']
+    @sitemap_types = []
+    
+    allowed_sitemap_types.each do |st|
+      if @json.job["sitemap_types_#{st}"]
+        @sitemap_types << st
+      end
+    end
+    
+    if @sitemap_types.count == 0
+      @job.write_output('No types selected for sitemap. No sitemap generated.')
+      return
+    end
+    
+    @use_slugs = @json.job['sitemap_use_slugs']
+    default_limit = AppConfig.has_key?(:aspace_sitemap_default_limit) ? AppConfig[:aspace_sitemap_default_limit] : 50000
+    sitemap_limit = @json.job['sitemap_limit'].to_i
+    sitemap_index_base_url = @json.job['sitemap_baseurl']
+    refresh_freq = @json.job['sitemap_refresh_freq']
     timestamp = Time.now.strftime("%Y-%m-%d") # add '-%H-%M-%S-%L' if need additional granualrity
+    
+    # make sure the sitemap limit is less than the google limit
+    unless (sitemap_limit <= default_limit)
+      sitemap_limit = google_limit
+    end
+    
+    # make sure the sitemap url ends in a "/"
+    unless sitemap_index_base_url[-1] == "/"
+      sitemap_index_base_url + "/"
+    end
+    
     @job.write_output('Generating sitemap')
     array = []
     files = []
@@ -44,7 +73,7 @@ class AspaceSitemapRunner < JobRunner
               xml.url {
                 xml.loc entry[:loc]
                 xml.lastmod entry[:lastmod]
-                xml.changefreq entry[:changefreq]
+                xml.changefreq refresh_freq
               }
             end
           }
@@ -100,27 +129,35 @@ class AspaceSitemapRunner < JobRunner
   end
   
   def fix_row(row)
+
+    # use slugs if set, otherwise use the standard url form based on ids
+    if @use_slugs && !row[:slug].nil?
+      object_url_part = row[:slug]
+    else
+      object_url_part = row[:id]
+    end
+    
     # agents have a different location string pattern
     if ['people','families','corporate_entities'].include?(row[:source])
-      row[:loc] = ["#{AppConfig[:public_proxy_url]}","agents",row[:source],row[:id]].join("/")
+      row[:loc] = ["#{AppConfig[:public_proxy_url]}","agents",row[:source],object_url_part].join("/")
     else
-      row[:loc] = ["#{AppConfig[:public_proxy_url]}","repositories",row[:repo_id],row[:source],row[:id]].join("/")
+      row[:loc] = ["#{AppConfig[:public_proxy_url]}","repositories",row[:repo_id],row[:source],object_url_part].join("/")
     end
+
     row[:lastmod] = row[:lastmod].strftime("%Y-%m-%d")
-    row[:changefreq] = AppConfig.has_key?(:aspace_sitemap_changefreq)? AppConfig[:aspace_sitemap_changefreq] : "yearly"
     
     # remove columns we don't need
     row.delete(:id)
     row.delete(:repo_id)
     row.delete(:publish)
     row.delete(:source)
+    row.delete(:slug)
   end
   
   def query_string
-
-    sitemap_types = AppConfig.has_key?(:aspace_sitemap_types) ? AppConfig[:aspace_sitemap_types] : ['resource','archival_object','digital_object','agent_person','agent_family','agent_corporate_entity']
     
     sitemap_types_map = {'resource' => 'resources',
+                         'accession' => 'accessions',
                          'archival_object' => 'archival_objects',
                          'digital_object' => 'digital_objects',
                          'agent_person' => 'people', 
@@ -130,7 +167,7 @@ class AspaceSitemapRunner < JobRunner
     
     queries = []
     
-    sitemap_types.each do |type|
+    @sitemap_types.each do |type|
       
       # agents don't have a repo_id so we have to supply one to make the columns match up
       if type.include?('agent')
@@ -143,6 +180,7 @@ class AspaceSitemapRunner < JobRunner
           publish,
           #{repo_line},
           id,
+          slug,
           user_mtime AS lastmod,
           '#{sitemap_types_map[type]}' AS source
         FROM
@@ -158,6 +196,7 @@ class AspaceSitemapRunner < JobRunner
     #  publish,
     #  repo_id,
     #  id,
+    #  slug,
     #  user_mtime AS lastmod,
     #  'archival_objects' AS source
     #FROM
@@ -169,6 +208,7 @@ class AspaceSitemapRunner < JobRunner
     #  publish,
     #  repo_id,
     #  id,
+    #  slug,
     #  user_mtime AS lastmod,
     #  'resources' AS source
     #FROM
@@ -180,6 +220,7 @@ class AspaceSitemapRunner < JobRunner
     #  publish,
     #  repo_id,
     #  id,
+    #  slug,
     #  user_mtime AS lastmod,
     #  'digital_objects' AS source
     #FROM
@@ -191,6 +232,7 @@ class AspaceSitemapRunner < JobRunner
     #  publish,
     #  '0' AS repo_id,
     #  id,
+    #  slug,
     #  user_mtime AS lastmod,
     #  'people' AS source
     #FROM
@@ -202,6 +244,7 @@ class AspaceSitemapRunner < JobRunner
     #  publish,
     #  '0' AS repo_id,
     #  id,
+    #  slug,
     #  user_mtime AS lastmod,
     #  'families' AS source
     #FROM
@@ -213,6 +256,7 @@ class AspaceSitemapRunner < JobRunner
     #  publish,
     #  '0' AS repo_id,
     #  id,
+    #  slug,
     #  user_mtime AS lastmod,
     #  'corporate_entities' AS source
     #FROM

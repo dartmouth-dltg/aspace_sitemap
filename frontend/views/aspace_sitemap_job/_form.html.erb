@@ -1,4 +1,42 @@
-<p>This job will generate one or more sitemap files together with an index file (if there is more than one sitemap) for the PUI.
-The files will be packaged into a zip file that can then be moved to whatever server location you use for storing sitemap files.</p>
-<p>The sitemap base url is set to: <pre><%= "#{AppConfig[:aspace_sitemap_baseurl]}" %></pre> To change this, edit your config.rb file as described in the ReadMe.
+<p><%= t('aspace_sitemap_job.sitemap_form_help') %></p>
 <%= form.hidden_input "format", "zip" %>
+<div class="form-group required">
+  <span class="help-block"><%= t('aspace_sitemap_job.sitemap_baseurl_help') %></span>
+  <%= form.label_and_textfield "sitemap_baseurl", {:field_opts => {:class => "input-large form-control", :required => true }} %>
+</div>
+<div class="form-group required">
+  <span class="help-block"><%= t('aspace_sitemap_job.sitemap_limit_help') %></span>
+  <%= form.label_and_textfield "sitemap_limit", {:field_opts => {:size => 10, :required => true, :type => "number"}} %>
+</div>
+<div class="form-group">
+  <span class="help-block"><%= t('aspace_sitemap_job.sitemap_types_legend') %></span>
+  <div class="form-group">
+    <%= form.label_and_boolean "sitemap_types_resource" %>
+  </div>
+  <div class="form-group">
+    <%= form.label_and_boolean "sitemap_types_accession" %>
+  </div>
+  <div class="form-group">
+    <%= form.label_and_boolean "sitemap_types_archival_object" %>
+  </div>
+  <div class="form-group">
+    <%= form.label_and_boolean "sitemap_types_digital_object" %>
+  </div>
+  <div class="form-group">
+    <%= form.label_and_boolean "sitemap_types_agent_person" %>
+  </div>
+  <div class="form-group">
+    <%= form.label_and_boolean "sitemap_types_agent_family" %>
+  </div>
+  <div class="form-group">
+    <%= form.label_and_boolean "sitemap_types_agent_corporate_entity" %>
+  </div>
+</div>
+<div class="form-group required">
+  <span class="help-block"><%= t('aspace_sitemap_job.sitemap_refresh_freq_help') %></span>
+  <%= form.label_and_select "sitemap_refresh_freq", ['yearly', 'monthly', 'daily', 'hourly', 'always', 'never'], {:field_opts => {:required => true}} %>
+</div>
+<div class="form-group">
+  <span class="help-block"><%= t('aspace_sitemap_job.sitemap_use_slugs_help') %></span>
+  <%= form.label_and_boolean "sitemap_use_slugs" %>
+</div>

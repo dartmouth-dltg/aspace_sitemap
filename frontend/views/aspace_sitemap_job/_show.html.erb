@@ -1,0 +1,30 @@
+<div class="form-group">
+  <label class="col-sm-3 control-label"><%= I18n.t("aspace_sitemap_job.sitemap_baseurl") %></label>
+  <div class="col-sm-9 controls label-only"><%= job['sitemap_baseurl'] %></div>
+</div>
+<div class="form-group">
+  <label class="col-sm-3 control-label"><%= I18n.t("aspace_sitemap_job.sitemap_limit") %></label>
+  <div class="col-sm-9 controls label-only"><%= job['sitemap_limit'] %></div>
+</div>
+<%
+  allowed_sitemap_types = ['resource','accession','archival_object','digital_object','agent_person','agent_family','agent_corporate_entity']
+  sitemap_types = []
+  
+  allowed_sitemap_types.each do |st|
+    if job["sitemap_types_#{st}"]
+      sitemap_types << st
+    end
+  end
+%>
+<div class="form-group">
+  <label class="col-sm-3 control-label"><%= I18n.t("aspace_sitemap_job.sitemap_types_list") %></label>
+  <div class="col-sm-9 controls label-only"><%= sitemap_types.compact().join(', ') %></div>
+</div>
+<div class="form-group">
+  <label class="col-sm-3 control-label"><%= I18n.t("aspace_sitemap_job.sitemap_refresh_freq") %></label>
+  <div class="col-sm-9 controls label-only"><%= job['sitemap_refresh_freq'] %></div>
+</div>
+<div class="form-group">
+  <label class="col-sm-3 control-label"><%= I18n.t("aspace_sitemap_job.sitemap_use_slugs") %></label>
+  <div class="col-sm-9 controls label-only"><%= job['sitemap_use_slugs'] %></div>
+</div>
