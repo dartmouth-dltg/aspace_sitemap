@@ -1,12 +1,16 @@
 require 'zip'
 require 'date'
 require 'nokogiri'
+require 'fileutils'
+require 'aspace_logger'
 
 class AspaceSitemapRunner < JobRunner
   
   register_for_job_type('aspace_sitemap_job')
   
   def run
+    
+    logger=Logger.new($stderr)
     
     # make sure the sitemap_types actually are allowed
     allowed_sitemap_types = ['resource','accession','archival_object','digital_object','agent_person','agent_family','agent_corporate_entity']
@@ -114,12 +118,17 @@ class AspaceSitemapRunner < JobRunner
       @job.write_output(e.backtrace)
       raise e
     ensure
+      static_page_loc = "#{ASUtils.find_local_directories(nil, 'aspace_sitemap').shift}/public/pages/"
       files.each do |file|
+        FileUtils.cp(file, static_page_loc)
         file.close
         file.unlink
       end
-      index_file.close if sitemap_parts.count > 1
-      index_file.unlink if sitemap_parts.count > 1
+      if sitemap_parts.count > 1
+        FileUtils.cp(index_file, static_page_loc)
+        index_file.close 
+        index_file.unlink
+      end
       zip_file.close
       zip_file.unlink
       @job.write_output('Done.')
