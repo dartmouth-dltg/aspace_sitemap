@@ -8,13 +8,7 @@
 </div>
 <%
   allowed_sitemap_types = ['resource','accession','archival_object','digital_object','agent_person','agent_family','agent_corporate_entity']
-  sitemap_types = []
-  
-  allowed_sitemap_types.each do |st|
-    if job["sitemap_types_#{st}"]
-      sitemap_types << st
-    end
-  end
+  sitemap_types = job['sitemap_types'].reject{|st| !allowed_sitemap_types.include?(st)}
 %>
 <div class="form-group">
   <label class="col-sm-3 control-label"><%= I18n.t("aspace_sitemap_job.sitemap_types_list") %></label>

@@ -8,16 +8,11 @@ class AspaceSitemapRunner < JobRunner
   
   def run
     
-    #rollup the sitemap_types into one array
+    # make sure the sitemap_types actually are allowed
     allowed_sitemap_types = ['resource','accession','archival_object','digital_object','agent_person','agent_family','agent_corporate_entity']
-    @sitemap_types = []
+    @sitemap_types = @json.job['sitemap_types'].reject{|st| !allowed_sitemap_types.include?(st)}
     
-    allowed_sitemap_types.each do |st|
-      if @json.job["sitemap_types_#{st}"]
-        @sitemap_types << st
-      end
-    end
-    
+    # this should never happen
     if @sitemap_types.count == 0
       @job.write_output('No types selected for sitemap. No sitemap generated.')
       return
@@ -31,7 +26,7 @@ class AspaceSitemapRunner < JobRunner
     timestamp = Time.now.strftime("%Y-%m-%d") # add '-%H-%M-%S-%L' if need additional granualrity
     
     # make sure the sitemap limit is less than the google limit
-    unless (sitemap_limit <= default_limit)
+    unless sitemap_limit <= default_limit
       sitemap_limit = google_limit
     end
     
@@ -53,7 +48,10 @@ class AspaceSitemapRunner < JobRunner
         end
       end
       
-      return if array.count == 0
+      if array.count == 0
+        @job.write_output('No published objects found. No sitemap generated.')
+        return
+      end
       
       # split the results set into chunks of less than the sitemap entry limit
       sitemap_parts = array.each_slice(sitemap_limit).to_a
