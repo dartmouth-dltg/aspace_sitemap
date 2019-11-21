@@ -6,7 +6,7 @@
 </div>
 <div class="form-group required">
   <span class="help-block"><%= t('aspace_sitemap_job.sitemap_limit_help') %></span>
-  <%= form.label_and_textfield "sitemap_limit", {:field_opts => {:size => 10, :required => true, :type => "number"}} %>
+  <%= form.label_and_textfield "sitemap_limit", {:field_opts => {:size => 10, :required => true, :type => "number", :value => 50000}} %>
 </div>
 <div class="form-group required">
   <span class="control-label"><%= t('aspace_sitemap_job.sitemap_types_legend') %></span>
