@@ -1,2 +1,7 @@
 <!-- aspace_sitemap -->
+<% if AppConfig.has_key?(:google_verification_meta_tag) %>
  <meta name="google-site-verification" content="<%= "#{AppConfig[:google_verification_meta_tag]}" %>">
+<% end %>
+<% if AppConfig.has_key?(:bing_verification_meta_tag) %>
+ <meta name="msvalidate.01" content="<%= "#{AppConfig[:bing_verification_meta_tag]}" %> />
+<% end %>

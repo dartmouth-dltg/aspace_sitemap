@@ -16,10 +16,14 @@ Add the plugin name to the list of enabled plugins in `config/config.rb`:
 ```
 AppConfig[:plugins] = ['some_plugin','aspace_sitemap']
 ```
+### Note
+For users running ArchivesSpace versions older than v2.6.0, please use the v2.5.0 release of this plugin.
+The v2.5.0 release of this plugin does not include support for slugs since those were introduced in AS v2.6.0.
 
 ## What does it do?
 The plugin adds a new job that generates a sitemap (or sitemaps with a sitemap index)
-for the PUI. There are a number of configuration options
+for the PUI. The file(s) can be downloaded and placed on a server of your choice for submission
+to the search engine(s) of choice.There are a number of configuration options
 
 ## Configuration
 
@@ -41,7 +45,12 @@ One way is by a verification meta tag.
 # set the meta tag from Google to verify site ownership
 AppConfig[:google_verification_meta_tag] = "your_verification_meta_tag"
 ```
-
+3) Bing also requires verification that you own the site. 
+One way is by a verification meta tag.
+```
+# set the meta tag from Bing to verify site ownership
+AppConfig[:bing_verification_meta_tag] = "your_verification_meta_tag"
+```
 ## How to Use
 For users with access to `Background Jobs`, there is a new entry in the `Create Jobs` menu called `ArchivesSpace PUI Sitemap` Once selected, the job asks for several inputs
 
