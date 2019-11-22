@@ -13,18 +13,25 @@ class AspaceSitemapRunner < JobRunner
     allowed_sitemap_types = ['resource','accession','archival_object','digital_object','agent_person','agent_family','agent_corporate_entity']
     @sitemap_types = @json.job['sitemap_types'].reject{|st| !allowed_sitemap_types.include?(st)}
     
-    # this should never happen
-    if @sitemap_types.count == 0
-      @job.write_output('No types selected for sitemap. No sitemap generated.')
-      return
-    end
-    
+    # setup some of our other variables
     @use_slugs = @json.job['sitemap_use_slugs']
     default_limit = AppConfig.has_key?(:aspace_sitemap_default_limit) ? AppConfig[:aspace_sitemap_default_limit] : 50000
     sitemap_limit = @json.job['sitemap_limit'].to_i
     sitemap_index_base_url = @json.job['sitemap_baseurl']
     refresh_freq = @json.job['sitemap_refresh_freq']
     timestamp = Time.now.strftime("%Y-%m-%d") # add '-%H-%M-%S-%L' if need additional granualrity
+    
+    # muck about with paths and filenames depending on if we are writing to the filesystem
+    index_filename = @json.job['sitemap_use_filesys'] ? "aspace_sitemap_index" : "aspace_sitemap_index_#{timestamp}"
+    sitemap_index_loc = @json.job['sitemap_use_filesys'] ? "#{AppConfig[:public_proxy_url]}/static/html/" : sitemap_index_base_url
+    static_page_loc = "#{ASUtils.find_local_directories(nil, 'aspace_sitemap').shift}/public/pages/"
+    sitemap_filename_prefix = "aspace_sitemap_#{timestamp}_part_"
+    
+    # this should never happen
+    if @sitemap_types.count == 0
+      @job.write_output('No types selected for sitemap. No sitemap generated.')
+      return
+    end
     
     # make sure the sitemap limit is less than the google limit
     unless sitemap_limit <= default_limit
@@ -70,12 +77,6 @@ class AspaceSitemapRunner < JobRunner
       end
       
       # create a sitemap index file
-      # muck about with paths and filenames depending on if we are writing to the filesystem
-      index_filename = @json.job['sitemap_use_filesys'] ? "aspace_sitemap_index" : "aspace_sitemap_index_#{timestamp}"
-      sitemap_index_loc = @json.job['sitemap_use_filesys'] ? "#{AppConfig[:public_proxy_url]}/static/html/" : sitemap_index_base_url
-      static_page_loc = "#{ASUtils.find_local_directories(nil, 'aspace_sitemap').shift}/public/pages/"
-      sitemap_filename_prefix = "aspace_sitemap_#{timestamp}_part_"
-      
       index_file = Tempfile.new([index_filename,".xml"])      
       index_file.write(create_sitemap_index(files, timestamp, sitemap_index_loc, sitemap_filename_prefix).to_xml)
       index_file.rewind
@@ -88,6 +89,14 @@ class AspaceSitemapRunner < JobRunner
         zip.add("#{index_filename}.xml", index_file.path)
       end
       
+      # writing to local filesystem
+      if @json.job['sitemap_use_filesys']
+        files.each_with_index do |file,k|
+          FileUtils.cp(file, "#{static_page_loc}#{sitemap_filename_prefix}#{k}.xml")
+        end
+        FileUtils.cp(index_file, "#{static_page_loc}aspace_sitemap_index.xml")
+      end
+      
       # close it out
       @job.write_output('Adding Sitemap')
       @job.add_file(zip_file)
@@ -97,18 +106,9 @@ class AspaceSitemapRunner < JobRunner
       @job.write_output(e.backtrace)
       raise e
     ensure
-      # deal with individual files, including writing to local filesystem
-      files.each_with_index do |file,k|
-        if @json.job['sitemap_use_filesys']
-          FileUtils.cp(file, "#{static_page_loc}#{sitemap_filename_prefix}#{k}.xml")
-        end
+      files.each do |file|
         file.close
         file.unlink
-      end
-      
-      # deal with index, including writing to local filesystem
-      if @json.job['sitemap_use_filesys']
-        FileUtils.cp(index_file, "#{static_page_loc}aspace_sitemap_index.xml")
       end
       index_file.close 
       index_file.unlink
