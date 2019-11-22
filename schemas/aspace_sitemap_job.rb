@@ -31,6 +31,9 @@
         "items" => {
           "type" => "string"
         }
+      },
+      "sitemap_use_filesys" => {
+        "type" => "boolean"
       }
     }
   }

@@ -4,11 +4,13 @@ en:
     _plural: ArchivesSpace PUI Sitemap Jobs
     sitemap_form_help: This job will generate one or more sitemap files together with an index file (if there is more than one sitemap) for the PUI. The files will be packaged into a zip file that can then be moved to whatever server location you use for storing sitemap files.
     sitemap_baseurl: Sitemap Index base url
-    sitemap_baseurl_help: "Where will you be placing the sitemaps? Example: https://library.dartmouth.edu/sitemaps/"
+    sitemap_baseurl_help: Where will you be placing the sitemaps? Example - https://library.dartmouth.edu/sitemaps/ This will be ignored if you choose the write to the filesystem option (below)
     sitemap_limit: Entries per sitemap
     sitemap_limit_help: How many sitemap records per file? Google limits this to 50,000 records per file.
     sitemap_use_slugs: Use slugs for sitemap
     sitemap_use_slugs_help: Use the generated human readable slugs for the sitemap <loc> entries when available
+    sitemap_use_filesys: Write to local filesystem 
+    sitemap_use_filesys_help: (Experimental) This will write the sitemaps to the local filesystem and then serve the xml as a static 'page'. The sitemap index will be available at '{pui_host}/static/html/aspace_sitemap_index.xml'
     sitemap_refresh_freq: Typical update frequency
     sitemap_refresh_freq_help: How often is an object typically updated? Choose the option that best suits most published objects.
     sitemap_types: Types of objects to include

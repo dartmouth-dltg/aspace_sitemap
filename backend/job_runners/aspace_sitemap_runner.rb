@@ -2,15 +2,12 @@ require 'zip'
 require 'date'
 require 'nokogiri'
 require 'fileutils'
-require 'aspace_logger'
 
 class AspaceSitemapRunner < JobRunner
   
   register_for_job_type('aspace_sitemap_job')
   
   def run
-    
-    logger=Logger.new($stderr)
     
     # make sure the sitemap_types actually are allowed
     allowed_sitemap_types = ['resource','accession','archival_object','digital_object','agent_person','agent_family','agent_corporate_entity']
@@ -68,8 +65,62 @@ class AspaceSitemapRunner < JobRunner
       # iterate through the sitemap pieces and build our xml files
       sitemap_parts.each_with_index do |sitemap,k|
         files[k] = Tempfile.new(["aspace_sitemap_#{timestamp}_part_#{k}", ".xml"])
+        files[k].write(create_sitemap_file(sitemap, refresh_freq).to_xml)
+        files[k].rewind
+      end
       
-        builder = Nokogiri::XML::Builder.new(:encoding => 'UTF-8') do |xml|
+      # create a sitemap index file
+      # muck about with paths and filenames depending on if we are writing to the filesystem
+      index_filename = @json.job['sitemap_use_filesys'] ? "aspace_sitemap_index" : "aspace_sitemap_index_#{timestamp}"
+      sitemap_index_loc = @json.job['sitemap_use_filesys'] ? "#{AppConfig[:public_proxy_url]}/static/html/" : sitemap_index_base_url
+      static_page_loc = "#{ASUtils.find_local_directories(nil, 'aspace_sitemap').shift}/public/pages/"
+      sitemap_filename_prefix = "aspace_sitemap_#{timestamp}_part_"
+      
+      index_file = Tempfile.new([index_filename,".xml"])      
+      index_file.write(create_sitemap_index(files, timestamp, sitemap_index_loc, sitemap_filename_prefix).to_xml)
+      index_file.rewind
+      
+      # wrap them all into a zip file
+      Zip::File.open(zip_file.path, Zip::File::CREATE) do |zip|
+        files.each_with_index do |file,k|
+          zip.add("aspace_sitemap_#{timestamp}_part_#{k}.xml", file.path)
+        end
+        zip.add("#{index_filename}.xml", index_file.path)
+      end
+      
+      # close it out
+      @job.write_output('Adding Sitemap')
+      @job.add_file(zip_file)
+      self.success!
+    rescue Exception => e
+      @job.write_output(e.message)
+      @job.write_output(e.backtrace)
+      raise e
+    ensure
+      # deal with individual files, including writing to local filesystem
+      files.each_with_index do |file,k|
+        if @json.job['sitemap_use_filesys']
+          FileUtils.cp(file, "#{static_page_loc}#{sitemap_filename_prefix}#{k}.xml")
+        end
+        file.close
+        file.unlink
+      end
+      
+      # deal with index, including writing to local filesystem
+      if @json.job['sitemap_use_filesys']
+        FileUtils.cp(index_file, "#{static_page_loc}aspace_sitemap_index.xml")
+      end
+      index_file.close 
+      index_file.unlink
+      zip_file.close
+      zip_file.unlink
+      @job.write_output('Done.')
+    end
+  end
+  
+  def create_sitemap_file(sitemap, refresh_freq)
+    
+    sitemap_build = Nokogiri::XML::Builder.new(:encoding => 'UTF-8') do |xml|
           xml.urlset('xmlns' => "https://www.sitemaps.org/schemas/sitemap/0.9") {
             sitemap.each do |entry|
               xml.url {
@@ -80,63 +131,26 @@ class AspaceSitemapRunner < JobRunner
             end
           }
         end
-        files[k].write(builder.to_xml)
-        files[k].rewind
-      end
-      
-      # create a sitemap index file if necessary
-      if sitemap_parts.count > 1
-        index_file = Tempfile.new(["aspace_sitemap_index_#{timestamp}",".xml"])
-
-        index_builder = Nokogiri::XML::Builder.new(:encoding => 'UTF-8') do |xml|
-            xml.urlset('xmlns' => "https://www.sitemaps.org/schemas/sitemap/0.9") {
-              files.each_with_index do |file,k|
-                xml.sitemap {
-                  xml.loc "#{sitemap_index_base_url}aspace_sitemap_#{timestamp}_part_#{k}.xml"
-                  xml.lastmod timestamp
-                }
-              end
-            }
-          end
-        index_file.write(index_builder.to_xml)
-        index_file.rewind
-      end
-      
-      # wrap them all into a zip file
-      Zip::File.open(zip_file.path, Zip::File::CREATE) do |zip|
-        files.each_with_index do |file,k|
-          zip.add("aspace_sitemap_#{timestamp}_part_#{k}.xml", file.path)
+    sitemap_build
+  end
+  
+  def create_sitemap_index(files, timestamp, sitemap_index_loc, sitemap_filename_prefix)
+    
+    index_build = Nokogiri::XML::Builder.new(:encoding => 'UTF-8') do |xml|
+          xml.urlset('xmlns' => "https://www.sitemaps.org/schemas/sitemap/0.9") {
+            files.each_with_index do |file,k|
+              xml.sitemap {
+                xml.loc "#{sitemap_index_loc}#{sitemap_filename_prefix}#{k}.xml"
+                xml.lastmod timestamp
+              }
+            end
+          }
         end
-        zip.add("aspace_sitemap_index_#{timestamp}.xml", index_file.path) if sitemap_parts.count > 1
-      end
-      
-      @job.write_output('Adding Sitemap')
-      @job.add_file(zip_file)
-      self.success!
-    rescue Exception => e
-      @job.write_output(e.message)
-      @job.write_output(e.backtrace)
-      raise e
-    ensure
-      static_page_loc = "#{ASUtils.find_local_directories(nil, 'aspace_sitemap').shift}/public/pages/"
-      files.each do |file|
-        FileUtils.cp(file, static_page_loc)
-        file.close
-        file.unlink
-      end
-      if sitemap_parts.count > 1
-        FileUtils.cp(index_file, static_page_loc)
-        index_file.close 
-        index_file.unlink
-      end
-      zip_file.close
-      zip_file.unlink
-      @job.write_output('Done.')
-    end
+    index_build
   end
   
   def fix_row(row)
-
+    
     # use slugs if set, otherwise use the standard url form based on ids
     if @use_slugs && !row[:slug].nil?
       object_url_part = row[:slug]
