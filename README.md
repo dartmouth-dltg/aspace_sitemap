@@ -17,8 +17,7 @@ Add the plugin name to the list of enabled plugins in `config/config.rb`:
 AppConfig[:plugins] = ['some_plugin','aspace_sitemap']
 ```
 ### Note
-For users running ArchivesSpace versions older than v2.6.0, please use the v2.5.0 release of this plugin.
-The v2.5.0 release of this plugin does not include support for slugs since those were introduced in AS v2.6.0.
+For users running ArchivesSpace versions older than v2.6.0, please note that slug related options are not available.
 
 ## What does it do?
 The plugin adds a new job that generates a sitemap (or sitemaps with a sitemap index)
