@@ -11,13 +11,19 @@
 </div>
 <div class="form-group required">
   <span class="control-label"><%= t('aspace_sitemap_job.sitemap_types_legend') %></span>
-  <%= form.label_and_multi_boolean("sitemap_types", ['resource', 'accession', 'archival_object', 'digital_object', 'agent_person', 'agent_family', 'agent_corporate_entity']) %>
+  <%= form.label_and_multi_boolean("sitemap_types", AppConfig[:allowed_sitemap_types], {}, false, true) %>
 </div>
 <div class="form-group required">
   <span class="help-block"><%= t('aspace_sitemap_job.sitemap_refresh_freq_help') %></span>
-  <%= form.label_and_select "sitemap_refresh_freq", ['yearly', 'monthly', 'daily', 'hourly', 'always', 'never'], {:field_opts => {:required => true}} %>
+  <%= form.label_and_select "sitemap_refresh_freq", AppConfig[:sitemap_frequencies], {:field_opts => {:required => true}} %>
 </div>
+<% if AppConfig.has_key?(:use_human_readable_urls) %>
 <div class="form-group">
   <span class="help-block"><%= t('aspace_sitemap_job.sitemap_use_slugs_help') %></span>
   <%= form.label_and_boolean "sitemap_use_slugs" %>
+</div>
+<% end %>
+<div class="form-group">
+  <span class="help-block"><%= t('aspace_sitemap_job.sitemap_use_filesys_help') %></span>
+  <%= form.label_and_boolean "sitemap_use_filesys" %>
 </div>

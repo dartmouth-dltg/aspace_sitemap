@@ -1,6 +1,7 @@
 require 'zip'
 require 'date'
 require 'nokogiri'
+require 'fileutils'
 
 class AspaceSitemapRunner < JobRunner
   
@@ -9,21 +10,26 @@ class AspaceSitemapRunner < JobRunner
   def run
     
     # make sure the sitemap_types actually are allowed
-    allowed_sitemap_types = ['resource','accession','archival_object','digital_object','agent_person','agent_family','agent_corporate_entity']
-    @sitemap_types = @json.job['sitemap_types'].reject{|st| !allowed_sitemap_types.include?(st)}
+    @sitemap_types = @json.job['sitemap_types'].reject{|st| !AppConfig[:allowed_sitemap_types_hash].keys.include?(st)}
+    
+    # setup some of our other variables
+    @use_slugs = AppConfig.has_key?(:use_human_readable_urls) ? @json.job['sitemap_use_slugs'] : false
+    default_limit = AppConfig[:aspace_sitemap_default_limit]
+    sitemap_limit = @json.job['sitemap_limit'].to_i
+    sitemap_index_base_url = @json.job['sitemap_baseurl']
+    refresh_freq = @json.job['sitemap_refresh_freq']
+    
+    # muck about with paths and filenames depending on if we are writing to the filesystem
+    index_filename = "aspace_sitemap_index"
+    sitemap_index_loc = @json.job['sitemap_use_filesys'] ? "#{AppConfig[:public_proxy_url]}/static/html/" : sitemap_index_base_url
+    static_page_loc = "#{ASUtils.find_local_directories(nil, 'aspace_sitemap').shift}/public/pages/"
+    sitemap_filename_prefix = "aspace_sitemap_part_"
     
     # this should never happen
     if @sitemap_types.count == 0
       @job.write_output('No types selected for sitemap. No sitemap generated.')
       return
     end
-    
-    @use_slugs = @json.job['sitemap_use_slugs']
-    default_limit = AppConfig.has_key?(:aspace_sitemap_default_limit) ? AppConfig[:aspace_sitemap_default_limit] : 50000
-    sitemap_limit = @json.job['sitemap_limit'].to_i
-    sitemap_index_base_url = @json.job['sitemap_baseurl']
-    refresh_freq = @json.job['sitemap_refresh_freq']
-    timestamp = Time.now.strftime("%Y-%m-%d") # add '-%H-%M-%S-%L' if need additional granualrity
     
     # make sure the sitemap limit is less than the google limit
     unless sitemap_limit <= default_limit
@@ -57,55 +63,39 @@ class AspaceSitemapRunner < JobRunner
       sitemap_parts = array.each_slice(sitemap_limit).to_a
 
       # initialize a zip file
-      zip_file = ASUtils.tempfile("aspace_sitemap_zip_#{timestamp}")
-      # open with the OutputStream class to initialize the zip struture correctly
+      zip_file = ASUtils.tempfile("aspace_sitemap_zip")
+      # open with the OutputStream class to initialize the zip structure correctly
       Zip::OutputStream.open(zip_file) { |zos| }
 
       # iterate through the sitemap pieces and build our xml files
       sitemap_parts.each_with_index do |sitemap,k|
-        files[k] = Tempfile.new(["aspace_sitemap_#{timestamp}_part_#{k}", ".xml"])
-      
-        builder = Nokogiri::XML::Builder.new(:encoding => 'UTF-8') do |xml|
-          xml.urlset('xmlns' => "https://www.sitemaps.org/schemas/sitemap/0.9") {
-            sitemap.each do |entry|
-              xml.url {
-                xml.loc entry[:loc]
-                xml.lastmod entry[:lastmod]
-                xml.changefreq refresh_freq
-              }
-            end
-          }
-        end
-        files[k].write(builder.to_xml)
+        files[k] = Tempfile.new(["#{sitemap_filename_prefix}#{k}", ".xml"])
+        files[k].write(create_sitemap_file(sitemap, refresh_freq).to_xml)
         files[k].rewind
       end
       
-      # create a sitemap index file if necessary
-      if sitemap_parts.count > 1
-        index_file = Tempfile.new(["aspace_sitemap_index_#{timestamp}",".xml"])
-
-        index_builder = Nokogiri::XML::Builder.new(:encoding => 'UTF-8') do |xml|
-            xml.urlset('xmlns' => "https://www.sitemaps.org/schemas/sitemap/0.9") {
-              files.each_with_index do |file,k|
-                xml.sitemap {
-                  xml.loc "#{sitemap_index_base_url}aspace_sitemap_#{timestamp}_part_#{k}.xml"
-                  xml.lastmod timestamp
-                }
-              end
-            }
-          end
-        index_file.write(index_builder.to_xml)
-        index_file.rewind
-      end
+      # create a sitemap index file
+      index_file = Tempfile.new([index_filename,".xml"])      
+      index_file.write(create_sitemap_index(files, sitemap_index_loc, sitemap_filename_prefix).to_xml)
+      index_file.rewind
       
       # wrap them all into a zip file
       Zip::File.open(zip_file.path, Zip::File::CREATE) do |zip|
         files.each_with_index do |file,k|
-          zip.add("aspace_sitemap_#{timestamp}_part_#{k}.xml", file.path)
+          zip.add("#{sitemap_filename_prefix}#{k}.xml", file.path)
         end
-        zip.add("aspace_sitemap_index_#{timestamp}.xml", index_file.path) if sitemap_parts.count > 1
+        zip.add("#{index_filename}.xml", index_file.path)
       end
       
+      # writing to local filesystem
+      if @json.job['sitemap_use_filesys']
+        files.each_with_index do |file,k|
+          FileUtils.cp(file, "#{static_page_loc}#{sitemap_filename_prefix}#{k}.xml")
+        end
+        FileUtils.cp(index_file, "#{static_page_loc}#{index_filename}.xml")
+      end
+      
+      # close it out
       @job.write_output('Adding Sitemap')
       @job.add_file(zip_file)
       self.success!
@@ -118,28 +108,61 @@ class AspaceSitemapRunner < JobRunner
         file.close
         file.unlink
       end
-      index_file.close if sitemap_parts.count > 1
-      index_file.unlink if sitemap_parts.count > 1
+      index_file.close 
+      index_file.unlink
       zip_file.close
       zip_file.unlink
       @job.write_output('Done.')
     end
   end
   
+  def create_sitemap_file(sitemap, refresh_freq)
+    
+    sitemap_build = Nokogiri::XML::Builder.new(:encoding => 'UTF-8') do |xml|
+          xml.urlset('xmlns' => "https://www.sitemaps.org/schemas/sitemap/0.9") {
+            sitemap.each do |entry|
+              xml.url {
+                xml.loc entry[:loc]
+                xml.lastmod entry[:lastmod]
+                xml.changefreq refresh_freq
+              }
+            end
+          }
+        end
+    sitemap_build
+  end
+  
+  def create_sitemap_index(files, sitemap_index_loc, sitemap_filename_prefix)
+    
+    index_build = Nokogiri::XML::Builder.new(:encoding => 'UTF-8') do |xml|
+          xml.urlset('xmlns' => "https://www.sitemaps.org/schemas/sitemap/0.9") {
+            files.each_with_index do |file,k|
+              xml.sitemap {
+                xml.loc "#{sitemap_index_loc}#{sitemap_filename_prefix}#{k}.xml"
+                xml.lastmod Time.now.strftime("%Y-%m-%d")
+              }
+            end
+          }
+        end
+    index_build
+  end
+  
   def fix_row(row)
-
+    
     # use slugs if set, otherwise use the standard url form based on ids
     if @use_slugs && !row[:slug].nil?
-      object_url_part = row[:slug]
+      # agents have a different location string pattern
+      if ['people','families','corporate_entities','software'].include?(row[:source])
+        row[:source] = "agents"
+      end
+      row[:loc] = ["#{AppConfig[:public_proxy_url]}",row[:source],row[:slug]].join("/")
     else
-      object_url_part = row[:id]
-    end
-    
-    # agents have a different location string pattern
-    if ['people','families','corporate_entities'].include?(row[:source])
-      row[:loc] = ["#{AppConfig[:public_proxy_url]}","agents",row[:source],object_url_part].join("/")
-    else
-      row[:loc] = ["#{AppConfig[:public_proxy_url]}","repositories",row[:repo_id],row[:source],object_url_part].join("/")
+      # agents have a different location string pattern
+      if ['people','families','corporate_entities','software'].include?(row[:source])
+        row[:loc] = ["#{AppConfig[:public_proxy_url]}","agents",row[:source],row[:id]].join("/")
+      else
+        row[:loc] = ["#{AppConfig[:public_proxy_url]}","repositories",row[:repo_id],row[:source],row[:id]].join("/")
+      end
     end
 
     row[:lastmod] = row[:lastmod].strftime("%Y-%m-%d")
@@ -149,21 +172,13 @@ class AspaceSitemapRunner < JobRunner
     row.delete(:repo_id)
     row.delete(:publish)
     row.delete(:source)
-    row.delete(:slug)
+    row.delete(:slug) if @use_slugs
   end
   
   def query_string
     
-    sitemap_types_map = {'resource' => 'resources',
-                         'accession' => 'accessions',
-                         'archival_object' => 'archival_objects',
-                         'digital_object' => 'digital_objects',
-                         'agent_person' => 'people', 
-                         'agent_family' => 'families',
-                         'agent_corporate_entity' => 'corporate_entities'
-                         }
-    
     queries = []
+    slug_query = @use_slugs ? "slug," : ""
     
     @sitemap_types.each do |type|
       
@@ -178,9 +193,9 @@ class AspaceSitemapRunner < JobRunner
           publish,
           #{repo_line},
           id,
-          slug,
+          #{slug_query}
           user_mtime AS lastmod,
-          '#{sitemap_types_map[type]}' AS source
+          '#{AppConfig[:allowed_sitemap_types_hash][type]}' AS source
         FROM
           #{type}
         WHERE
