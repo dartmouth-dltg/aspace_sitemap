@@ -10,7 +10,7 @@ class AspaceSitemapRunner < JobRunner
   def run
     
     # make sure the sitemap_types actually are allowed
-    allowed_sitemap_types = ['resource','accession','archival_object','digital_object','agent_person','agent_family','agent_corporate_entity']
+    allowed_sitemap_types = ['resource','accession','archival_object','digital_object','agent_person','agent_family','agent_corporate_entity','agent_software']
     @sitemap_types = @json.job['sitemap_types'].reject{|st| !allowed_sitemap_types.include?(st)}
     
     # setup some of our other variables
@@ -152,16 +152,18 @@ class AspaceSitemapRunner < JobRunner
     
     # use slugs if set, otherwise use the standard url form based on ids
     if @use_slugs && !row[:slug].nil?
-      object_url_part = row[:slug]
+      # agents have a different location string pattern
+      if ['people','families','corporate_entities','software'].include?(row[:source])
+        row[:source] = "agents"
+      end
+      row[:loc] = ["#{AppConfig[:public_proxy_url]}",row[:source],row[:slug]].join("/")
     else
-      object_url_part = row[:id]
-    end
-    
-    # agents have a different location string pattern
-    if ['people','families','corporate_entities','software'].include?(row[:source])
-      row[:loc] = ["#{AppConfig[:public_proxy_url]}","agents",row[:source],object_url_part].join("/")
-    else
-      row[:loc] = ["#{AppConfig[:public_proxy_url]}","repositories",row[:repo_id],row[:source],object_url_part].join("/")
+      # agents have a different location string pattern
+      if ['people','families','corporate_entities','software'].include?(row[:source])
+        row[:loc] = ["#{AppConfig[:public_proxy_url]}","agents",row[:source],row[:id]].join("/")
+      else
+        row[:loc] = ["#{AppConfig[:public_proxy_url]}","repositories",row[:repo_id],row[:source],row[:id]].join("/")
+      end
     end
 
     row[:lastmod] = row[:lastmod].strftime("%Y-%m-%d")
@@ -183,7 +185,7 @@ class AspaceSitemapRunner < JobRunner
                          'agent_person' => 'people', 
                          'agent_family' => 'families',
                          'agent_corporate_entity' => 'corporate_entities',
-                         'agents_software' => 'software '
+                         'agent_software' => 'software'
                          }
     
     queries = []

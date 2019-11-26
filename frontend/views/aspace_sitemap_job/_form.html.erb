@@ -11,7 +11,7 @@
 </div>
 <div class="form-group required">
   <span class="control-label"><%= t('aspace_sitemap_job.sitemap_types_legend') %></span>
-  <%= form.label_and_multi_boolean("sitemap_types", ['resource', 'accession', 'archival_object', 'digital_object', 'agent_person', 'agent_family', 'agent_corporate_entity']) %>
+  <%= form.label_and_multi_boolean("sitemap_types", ['resource', 'accession', 'archival_object', 'digital_object', 'agent_person', 'agent_family', 'agent_corporate_entity','agent_software'], false, true) %>
 </div>
 <div class="form-group required">
   <span class="help-block"><%= t('aspace_sitemap_job.sitemap_refresh_freq_help') %></span>
