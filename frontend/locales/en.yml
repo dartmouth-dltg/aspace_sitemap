@@ -23,6 +23,7 @@ en:
     sitemap_types_agent_person: Agents - People
     sitemap_types_agent_family: Agents - Families
     sitemap_types_agent_corporate_entity: Agents - Corporate Entities
+    sitemap_types_agent_software: Agents - Software
   job:
     types:
       aspace_sitemap_job: ArchivesSpace PUI Sitemap

@@ -10,12 +10,11 @@ class AspaceSitemapRunner < JobRunner
   def run
     
     # make sure the sitemap_types actually are allowed
-    allowed_sitemap_types = ['resource','accession','archival_object','digital_object','agent_person','agent_family','agent_corporate_entity','agent_software']
-    @sitemap_types = @json.job['sitemap_types'].reject{|st| !allowed_sitemap_types.include?(st)}
+    @sitemap_types = @json.job['sitemap_types'].reject{|st| !AppConfig[:allowed_sitemap_types_hash].keys.include?(st)}
     
     # setup some of our other variables
     @use_slugs = AppConfig.has_key?(:use_human_readable_urls) ? @json.job['sitemap_use_slugs'] : false
-    default_limit = AppConfig.has_key?(:aspace_sitemap_default_limit) ? AppConfig[:aspace_sitemap_default_limit] : 50000
+    default_limit = AppConfig[:aspace_sitemap_default_limit]
     sitemap_limit = @json.job['sitemap_limit'].to_i
     sitemap_index_base_url = @json.job['sitemap_baseurl']
     refresh_freq = @json.job['sitemap_refresh_freq']
@@ -173,22 +172,13 @@ class AspaceSitemapRunner < JobRunner
     row.delete(:repo_id)
     row.delete(:publish)
     row.delete(:source)
-    row.delete(:slug)
+    row.delete(:slug) if @use_slugs
   end
   
   def query_string
     
-    sitemap_types_map = {'resource' => 'resources',
-                         'accession' => 'accessions',
-                         'archival_object' => 'archival_objects',
-                         'digital_object' => 'digital_objects',
-                         'agent_person' => 'people', 
-                         'agent_family' => 'families',
-                         'agent_corporate_entity' => 'corporate_entities',
-                         'agent_software' => 'software'
-                         }
-    
     queries = []
+    slug_query = @use_slugs ? "slug," : ""
     
     @sitemap_types.each do |type|
       
@@ -202,10 +192,10 @@ class AspaceSitemapRunner < JobRunner
       "(SELECT
           publish,
           #{repo_line},
-          id," +
-          @use_slugs ? "slug," : ""
-          + "user_mtime AS lastmod,
-          '#{sitemap_types_map[type]}' AS source
+          id,
+          #{slug_query}
+          user_mtime AS lastmod,
+          '#{AppConfig[:allowed_sitemap_types_hash][type]}' AS source
         FROM
           #{type}
         WHERE
