@@ -18,10 +18,12 @@
   <label class="col-sm-3 control-label"><%= I18n.t("aspace_sitemap_job.sitemap_refresh_freq") %></label>
   <div class="col-sm-9 controls label-only"><%= job['sitemap_refresh_freq'] %></div>
 </div>
+<% if AppConfig.has_key?(:use_human_readable_urls) %>
 <div class="form-group">
   <label class="col-sm-3 control-label"><%= I18n.t("aspace_sitemap_job.sitemap_use_slugs") %></label>
   <div class="col-sm-9 controls label-only"><%= job['sitemap_use_slugs'] %></div>
 </div>
+<% end %>
 <div class="form-group">
   <label class="col-sm-3 control-label"><%= I18n.t("aspace_sitemap_job.sitemap_use_filesys") %></label>
   <div class="col-sm-9 controls label-only"><%= job['sitemap_use_filesys'] %></div>

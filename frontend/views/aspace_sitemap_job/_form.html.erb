@@ -17,10 +17,12 @@
   <span class="help-block"><%= t('aspace_sitemap_job.sitemap_refresh_freq_help') %></span>
   <%= form.label_and_select "sitemap_refresh_freq", ['yearly', 'monthly', 'daily', 'hourly', 'always', 'never'], {:field_opts => {:required => true}} %>
 </div>
+<% if AppConfig.has_key?(:use_human_readable_urls) %>
 <div class="form-group">
   <span class="help-block"><%= t('aspace_sitemap_job.sitemap_use_slugs_help') %></span>
   <%= form.label_and_boolean "sitemap_use_slugs" %>
 </div>
+<% end %>
 <div class="form-group">
   <span class="help-block"><%= t('aspace_sitemap_job.sitemap_use_filesys_help') %></span>
   <%= form.label_and_boolean "sitemap_use_filesys" %>

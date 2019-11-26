@@ -14,7 +14,7 @@ class AspaceSitemapRunner < JobRunner
     @sitemap_types = @json.job['sitemap_types'].reject{|st| !allowed_sitemap_types.include?(st)}
     
     # setup some of our other variables
-    @use_slugs = @json.job['sitemap_use_slugs']
+    @use_slugs = AppConfig.has_key?(:use_human_readable_urls) ? @json.job['sitemap_use_slugs'] : false
     default_limit = AppConfig.has_key?(:aspace_sitemap_default_limit) ? AppConfig[:aspace_sitemap_default_limit] : 50000
     sitemap_limit = @json.job['sitemap_limit'].to_i
     sitemap_index_base_url = @json.job['sitemap_baseurl']
@@ -200,9 +200,9 @@ class AspaceSitemapRunner < JobRunner
       "(SELECT
           publish,
           #{repo_line},
-          id,
-          slug,
-          user_mtime AS lastmod,
+          id," +
+          @use_slugs ? "slug," : ""
+          + "user_mtime AS lastmod,
           '#{sitemap_types_map[type]}' AS source
         FROM
           #{type}
