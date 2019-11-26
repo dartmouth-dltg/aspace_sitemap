@@ -41,7 +41,7 @@ class AspaceSitemapRunner < JobRunner
 
     # make sure the sitemap limit is less than the google limit
     unless sitemap_limit <= default_limit
-      sitemap_limit = google_limit
+      sitemap_limit = default_limit
     end
 
     @job.write_output('Generating sitemap')
