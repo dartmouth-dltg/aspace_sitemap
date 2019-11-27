@@ -13,7 +13,7 @@ class AspaceSitemapRunner < JobRunner
     @sitemap_types = @json.job['sitemap_types'].reject{|st| !AppConfig[:allowed_sitemap_types_hash].keys.include?(st)}
 
     # setup some of our other variables
-    @use_slugs = AppConfig[:use_human_readable_urls] ? @json.job['sitemap_use_slugs'] : false
+    @use_slugs = AppConfig.has_key?(:use_human_readable_urls) && AppConfig[:use_human_readable_urls] ? @json.job['sitemap_use_slugs'] : false
     default_limit = AppConfig[:aspace_sitemap_default_limit]
     sitemap_limit = @json.job['sitemap_limit'].to_i
     sitemap_index_base_url = @json.job['sitemap_baseurl']
@@ -26,10 +26,15 @@ class AspaceSitemapRunner < JobRunner
       sitemap_index_base_url.prepend('https://')
     end
     refresh_freq = @json.job['sitemap_refresh_freq']
+    @pui_base_url = AppConfig[:public_proxy_url]
+    # make sure the public url ends in a "/"
+    unless @pui_base_url[-1] == "/"
+      @pui_base_url += "/"
+    end
 
     # muck about with paths and filenames depending on if we are writing to the filesystem
     index_filename = "aspace_sitemap_index"
-    sitemap_index_loc = @json.job['sitemap_use_filesys'] ? "#{AppConfig[:public_proxy_url]}/static/html/" : sitemap_index_base_url
+    sitemap_index_loc = @json.job['sitemap_use_filesys'] ? "#{@pui_base_url}static/html/" : sitemap_index_base_url
     static_page_loc = "#{ASUtils.find_local_directories(nil, 'aspace_sitemap').shift}/public/pages/"
     sitemap_filename_prefix = "aspace_sitemap_part_"
 
@@ -60,6 +65,12 @@ class AspaceSitemapRunner < JobRunner
       if array.count == 0
         @job.write_output('No published objects found. No sitemap generated.')
         return
+      end
+      
+      # explicitly add some 'static' pages - like the homepage!
+      static_pages = ["","search?reset=true"]
+      static_pages.each do |sp|
+        array.push({:loc => "#{@pui_base_url}"+sp, :lastmod => Time.now.strftime("%Y-%m-%d")})
       end
 
       # split the results set into chunks of less than the sitemap entry limit
@@ -158,13 +169,13 @@ class AspaceSitemapRunner < JobRunner
       if ['people','families','corporate_entities','software'].include?(row[:source])
         row[:source] = "agents"
       end
-      row[:loc] = ["#{AppConfig[:public_proxy_url]}",row[:source],row[:slug]].join("/")
+      row[:loc] = ["#{@pui_base_url.chop}",row[:source],row[:slug]].join("/")
     else
       # agents have a different location string pattern
       if ['people','families','corporate_entities','software'].include?(row[:source])
-        row[:loc] = ["#{AppConfig[:public_proxy_url]}","agents",row[:source],row[:id]].join("/")
+        row[:loc] = ["#{@pui_base_url.chop}","agents",row[:source],row[:id]].join("/")
       else
-        row[:loc] = ["#{AppConfig[:public_proxy_url]}","repositories",row[:repo_id],row[:source],row[:id]].join("/")
+        row[:loc] = ["#{@pui_base_url.chop}","repositories",row[:repo_id],row[:source],row[:id]].join("/")
       end
     end
 
