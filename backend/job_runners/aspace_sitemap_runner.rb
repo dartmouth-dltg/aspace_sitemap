@@ -2,15 +2,13 @@ require 'zip'
 require 'date'
 require 'nokogiri'
 require 'fileutils'
-require 'aspace_logger'
 
 class AspaceSitemapRunner < JobRunner
     
   register_for_job_type('aspace_sitemap_job')
 
   def run
-    logger = Logger.new($stderr)
-
+    
     # make sure the sitemap_types actually are allowed
     @sitemap_types = @json.job['sitemap_types'].reject{|st| !AppConfig[:allowed_sitemap_types_hash].keys.include?(st)}
 
@@ -55,15 +53,17 @@ class AspaceSitemapRunner < JobRunner
     pub_repos = []
     array = []
     files = []
+    hua_deletes = []
 
     begin
-      
+      # get the pubished repos so we can reject any objects that are marked published, but are part of an unpubbed repo
       DB.open do |db|
         db.fetch("SELECT id FROM repository WHERE publish = 1") do |repo|
           pub_repos << repo.to_hash[:id]
         end
       end
       
+      # fetch all of the objects marked as published
       DB.open do |db|
         db.fetch(query_string) do |result|
           row = result.to_hash
@@ -79,14 +79,21 @@ class AspaceSitemapRunner < JobRunner
       
       @job.write_output('Checking for unpublished ancestors')
       
+      # use 50 for group size, though maybe tune this depending on memory?
+      # build a list of objects with unpubbed ancestors
+      array.each_slice(50) do |group|
+        hua_deletes.concat(has_unpublished_ancestor(group))
+      end
+      
+      # remove the objects with unpubbed ancestors from our list of published objects
       array.delete_if do |row|
         unless pub_repos.include?(row[:repo_id])
           true
         end
-        if ['archival_objects','digital_object_components'].include?(row[:source]) && has_unpublished_ancestor(row)
+        if hua_deletes.include?(row[:uri])
           @job.write_output("Sitemap will not include repositories/#{row[:repo_id]}/#{row[:source]}/#{row[:id]} since it has an unpublished ancestor")
           true
-        end 
+        end
       end
       
       # explicitly add some 'static' pages - like the homepage!
@@ -183,18 +190,31 @@ class AspaceSitemapRunner < JobRunner
     index_build
   end
   
-  def has_unpublished_ancestor(row)
-    uri = "/repositories/#{row[:repo_id]}/#{row[:source]}/#{row[:id]}"
-    rec = Search.records_for_uris([uri])
-    if ASUtils.json_parse(rec['results'][0]['json'])['has_unpublished_ancestor']
-      return true
-    else
-      return false
+  def has_unpublished_ancestor(rows)
+    hua = []
+    uris = []
+    rows.each do |row|
+      uris << row[:uri]
     end
+    # the SOLR index has an entry for unpublished ancestors, so we search in groups
+    # iterate through that set and add any uris that do have unpublished ancestors
+    response = Search.records_for_uris(uris)
+    response["results"].each do |res|
+      if ASUtils.json_parse(res['json'])['has_unpublished_ancestor']
+        hua << res["uri"]
+      end
+    end
+    hua
   end
 
   def fix_row(row)
 
+    # we add the uri since we'll need it for deleting entries that have unpublished ancestors
+    if ['people','families','corporate_entities','software'].include?(row[:source])
+      row[:uri] = ["agents",row[:source],row[:id]].join("/")
+    else
+      row[:uri] = ["repositories",row[:repo_id],row[:source],row[:id]].join("/")
+    end
     # use slugs if set, otherwise use the standard url form based on ids
     if @use_slugs && !row[:slug].nil?
       # agents have a different location string pattern
@@ -205,19 +225,17 @@ class AspaceSitemapRunner < JobRunner
     else
       # agents have a different location string pattern
       if ['people','families','corporate_entities','software'].include?(row[:source])
-        row[:loc] = ["#{@pui_base_url.chop}","agents",row[:source],row[:id]].join("/")
+        row[:loc] = ["#{@pui_base_url.chop}",row[:uri]].join("/")
       else
-        row[:loc] = ["#{@pui_base_url.chop}","repositories",row[:repo_id],row[:source],row[:id]].join("/")
+        row[:loc] = ["#{@pui_base_url.chop}",row[:uri]].join("/")
       end
     end
-
+    # pop a "/" on the front of the uri for use later
+    row[:uri].prepend("/")
     row[:lastmod] = row[:lastmod].strftime("%Y-%m-%d")
 
     # remove columns we don't need
-    #row.delete(:id)
-    #row.delete(:repo_id)
     row.delete(:publish)
-    #row.delete(:source)
     row.delete(:slug) if @use_slugs
   end
 
