@@ -2,12 +2,14 @@ require 'zip'
 require 'date'
 require 'nokogiri'
 require 'fileutils'
+require 'aspace_logger'
 
 class AspaceSitemapRunner < JobRunner
-
+    
   register_for_job_type('aspace_sitemap_job')
 
   def run
+    logger = Logger.new($stderr)
 
     # make sure the sitemap_types actually are allowed
     @sitemap_types = @json.job['sitemap_types'].reject{|st| !AppConfig[:allowed_sitemap_types_hash].keys.include?(st)}
@@ -50,10 +52,18 @@ class AspaceSitemapRunner < JobRunner
     end
 
     @job.write_output('Generating sitemap')
+    pub_repos = []
     array = []
     files = []
 
     begin
+      
+      DB.open do |db|
+        db.fetch("SELECT id FROM repository WHERE publish = 1") do |repo|
+          pub_repos << repo.to_hash[:id]
+        end
+      end
+      
       DB.open do |db|
         db.fetch(query_string) do |result|
           row = result.to_hash
@@ -65,6 +75,18 @@ class AspaceSitemapRunner < JobRunner
       if array.count == 0
         @job.write_output('No published objects found. No sitemap generated.')
         return
+      end
+      
+      @job.write_output('Checking for unpublished ancestors')
+      
+      array.delete_if do |row|
+        unless pub_repos.include?(row[:repo_id])
+          true
+        end
+        if ['archival_objects','digital_object_components'].include?(row[:source]) && has_unpublished_ancestor(row)
+          @job.write_output("Sitemap will not include repositories/#{row[:repo_id]}/#{row[:source]}/#{row[:id]} since it has an unpublished ancestor")
+          true
+        end 
       end
       
       # explicitly add some 'static' pages - like the homepage!
@@ -160,6 +182,16 @@ class AspaceSitemapRunner < JobRunner
         end
     index_build
   end
+  
+  def has_unpublished_ancestor(row)
+    uri = "/repositories/#{row[:repo_id]}/#{row[:source]}/#{row[:id]}"
+    rec = Search.records_for_uris([uri])
+    if ASUtils.json_parse(rec['results'][0]['json'])['has_unpublished_ancestor']
+      return true
+    else
+      return false
+    end
+  end
 
   def fix_row(row)
 
@@ -182,10 +214,10 @@ class AspaceSitemapRunner < JobRunner
     row[:lastmod] = row[:lastmod].strftime("%Y-%m-%d")
 
     # remove columns we don't need
-    row.delete(:id)
-    row.delete(:repo_id)
+    #row.delete(:id)
+    #row.delete(:repo_id)
     row.delete(:publish)
-    row.delete(:source)
+    #row.delete(:source)
     row.delete(:slug) if @use_slugs
   end
 

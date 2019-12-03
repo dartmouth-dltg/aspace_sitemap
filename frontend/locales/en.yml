@@ -20,6 +20,7 @@ en:
     sitemap_types_accession: Accessions
     sitemap_types_archival_object: Archival Objects
     sitemap_types_digital_object: Digital Objects
+    sitemap_types_digital_object: Digital Object Components
     sitemap_types_agent_person: Agents - People
     sitemap_types_agent_family: Agents - Families
     sitemap_types_agent_corporate_entity: Agents - Corporate Entities
