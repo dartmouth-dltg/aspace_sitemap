@@ -59,10 +59,10 @@ class AspaceSitemapRunner < JobRunner
       # get the pubished repos so we can reject any objects that are marked published, but are part of an unpubbed repo
       DB.open do |db|
         db.fetch("SELECT id FROM repository WHERE publish = 1") do |repo|
-          pub_repos << repo.to_hash[:id]
+          pub_repos << repo.to_hash[:id].to_i
         end
       end
-      
+
       # fetch all of the objects marked as published
       DB.open do |db|
         db.fetch(query_string) do |result|
@@ -96,16 +96,15 @@ class AspaceSitemapRunner < JobRunner
       # do we really need to inform the end user about items not included? Useful or clutter?
       array.delete_if do |row|
         next if AppConfig[:sitemap_agent_types].include?(row[:source])
-        unless pub_repos.include?(row[:repo_id])
+        if !pub_repos.include?(row[:repo_id].to_i)
           @job.write_output("Sitemap will not include /repositories/#{row[:repo_id]}/#{row[:source]}/#{row[:id]} since it is part of an unpublished repository")
           true
-        end
-        if hua_deletes.include?(row[:uri])
+        elsif hua_deletes.include?(row[:uri])
           @job.write_output("Sitemap will not include /repositories/#{row[:repo_id]}/#{row[:source]}/#{row[:id]} since it has an unpublished ancestor")
           true
         end
       end
-      
+
       # explicitly add some 'static' pages - like the homepage!
       static_pages = ["","search?reset=true"]
       static_pages.each do |sp|
