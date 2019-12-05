@@ -4,11 +4,10 @@ require 'nokogiri'
 require 'fileutils'
 
 class AspaceSitemapRunner < JobRunner
-
+    
   register_for_job_type('aspace_sitemap_job')
 
   def run
-
     # make sure the sitemap_types actually are allowed
     @sitemap_types = @json.job['sitemap_types'].reject{|st| !AppConfig[:allowed_sitemap_types_hash].keys.include?(st)}
 
@@ -44,16 +43,27 @@ class AspaceSitemapRunner < JobRunner
       return
     end
 
-    # make sure the sitemap limit is less than the google limit
+    # make sure the sitemap limit is less than the default limit
     unless sitemap_limit <= default_limit
       sitemap_limit = default_limit
     end
 
     @job.write_output('Generating sitemap')
+    pub_repos = []
     array = []
+    has_ancs = []
     files = []
+    hua_deletes = []
 
     begin
+      # get the pubished repos so we can reject any objects that are marked published, but are part of an unpubbed repo
+      DB.open do |db|
+        db.fetch("SELECT id FROM repository WHERE publish = 1") do |repo|
+          pub_repos << repo.to_hash[:id].to_i
+        end
+      end
+
+      # fetch all of the objects marked as published
       DB.open do |db|
         db.fetch(query_string) do |result|
           row = result.to_hash
@@ -67,6 +77,34 @@ class AspaceSitemapRunner < JobRunner
         return
       end
       
+      # select published objects that can have ancestors so we can check them for unpubbed ancestors
+      has_ancs = array.select { |row| AppConfig[:sitemap_has_ancestor_types].include?(row[:source]) }
+      
+      @job.write_output('Checking for unpublished ancestors')
+      
+      # use 50 for group size, though maybe tune this depending on memory?
+      # build a list of objects with unpubbed ancestors
+      has_ancs.each_slice(50).with_index do |group,i|
+        if i % 400 == 0 && i != 0
+          @job.write_output('Still checking for unpublished ancestors')
+        end
+        hua_deletes.concat(has_unpublished_ancestor(group))
+      end
+      
+      # remove the objects with unpubbed ancestors from our list of published objects
+      # also check for objects that are scoped to a repo but live in an unpubbed repo and remove those
+      # do we really need to inform the end user about items not included? Useful or clutter?
+      array.delete_if do |row|
+        next if AppConfig[:sitemap_agent_types].include?(row[:source])
+        if !pub_repos.include?(row[:repo_id].to_i)
+          @job.write_output("Sitemap will not include /repositories/#{row[:repo_id]}/#{row[:source]}/#{row[:id]} since it is part of an unpublished repository")
+          true
+        elsif hua_deletes.include?(row[:uri])
+          @job.write_output("Sitemap will not include /repositories/#{row[:repo_id]}/#{row[:source]}/#{row[:id]} since it has an unpublished ancestor")
+          true
+        end
+      end
+
       # explicitly add some 'static' pages - like the homepage!
       static_pages = ["","search?reset=true"]
       static_pages.each do |sp|
@@ -131,7 +169,6 @@ class AspaceSitemapRunner < JobRunner
   end
 
   def create_sitemap_file(sitemap, refresh_freq)
-
     sitemap_build = Nokogiri::XML::Builder.new(:encoding => 'UTF-8') do |xml|
           xml.urlset('xmlns' => "https://www.sitemaps.org/schemas/sitemap/0.9") {
             sitemap.each do |entry|
@@ -147,7 +184,6 @@ class AspaceSitemapRunner < JobRunner
   end
 
   def create_sitemap_index(files, sitemap_index_loc, sitemap_filename_prefix)
-
     index_build = Nokogiri::XML::Builder.new(:encoding => 'UTF-8') do |xml|
           xml.urlset('xmlns' => "https://www.sitemaps.org/schemas/sitemap/0.9") {
             files.each_with_index do |file,k|
@@ -160,42 +196,55 @@ class AspaceSitemapRunner < JobRunner
         end
     index_build
   end
+  
+  def has_unpublished_ancestor(rows)
+    hua = []
+    uris = []
+    rows.each do |row|
+      uris << row[:uri]
+    end
+    # the SOLR index has an entry for unpublished ancestors, so we search in groups
+    # iterate through that set and add any uris that do have unpublished ancestors
+    response = Search.records_for_uris(uris)
+    response["results"].each do |res|
+      if ASUtils.json_parse(res['json'])['has_unpublished_ancestor']
+        hua << res["uri"]
+      end
+    end
+    hua
+  end
 
   def fix_row(row)
-
+    # we add the uri since we'll need it for deleting entries that have unpublished ancestors
+    if AppConfig[:sitemap_agent_types].include?(row[:source])
+      row[:uri] = ["agents",row[:source],row[:id]].join("/")
+    else
+      row[:uri] = ["repositories",row[:repo_id],row[:source],row[:id]].join("/")
+    end
     # use slugs if set, otherwise use the standard url form based on ids
     if @use_slugs && !row[:slug].nil?
       # agents have a different location string pattern
-      if ['people','families','corporate_entities','software'].include?(row[:source])
+      if AppConfig[:sitemap_agent_types].include?(row[:source])
         row[:source] = "agents"
       end
       row[:loc] = ["#{@pui_base_url.chop}",row[:source],row[:slug]].join("/")
     else
-      # agents have a different location string pattern
-      if ['people','families','corporate_entities','software'].include?(row[:source])
-        row[:loc] = ["#{@pui_base_url.chop}","agents",row[:source],row[:id]].join("/")
-      else
-        row[:loc] = ["#{@pui_base_url.chop}","repositories",row[:repo_id],row[:source],row[:id]].join("/")
-      end
+      row[:loc] = ["#{@pui_base_url.chop}",row[:uri]].join("/")
     end
-
+    # pop a "/" on the front of the uri for use later
+    row[:uri].prepend("/")
     row[:lastmod] = row[:lastmod].strftime("%Y-%m-%d")
 
     # remove columns we don't need
-    row.delete(:id)
-    row.delete(:repo_id)
     row.delete(:publish)
-    row.delete(:source)
     row.delete(:slug) if @use_slugs
   end
 
   def query_string
-
     queries = []
     slug_query = @use_slugs ? "slug," : ""
 
     @sitemap_types.each do |type|
-
       # agents don't have a repo_id so we have to supply one to make the columns match up
       if type.include?('agent')
         repo_line = "'0' AS repo_id"
@@ -216,7 +265,7 @@ class AspaceSitemapRunner < JobRunner
           publish = 1)"
     end
 
-   return queries.compact.join("UNION")
+    return queries.compact.join("UNION")
 
     # query_string will become something like the below
     #"(SELECT
@@ -291,5 +340,4 @@ class AspaceSitemapRunner < JobRunner
     #WHERE
     #  publish = 1)"
   end
-
 end
