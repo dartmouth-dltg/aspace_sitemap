@@ -18,12 +18,9 @@ class SitemapController < ApplicationController
     cipher = OpenSSL::Cipher::AES.new(256, :CBC)
     cipher.encrypt
     
-    key = Digest::SHA256.digest("#{AppConfig[:public_user_secret]}")
-    iv = cipher.random_iv
-    
-    # load them into the cipher
-    cipher.key = key
-    cipher.iv = iv
+    # load key and iv into the cipher
+    cipher.key = Digest::SHA256.digest("#{AppConfig[:public_user_secret]}")
+    cipher.iv = cipher.random_iv
     
     # encrypt the path
     encrypted = cipher.update("#{Rails.root.to_s}")
