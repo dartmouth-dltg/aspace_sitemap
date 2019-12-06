@@ -7,8 +7,8 @@ class SitemapController < ApplicationController
       
   def sitemap_root
     iv, pui_root = encrypt_sr
+    pui_rails_root = {:iv => URI::encode(iv), :pui_root => URI::encode(pui_root)}
     respond_to do |format|
-      pui_rails_root = {:iv => URI::encode(iv), :pui_root => URI::encode(pui_root)}
       format.json { render :json => pui_rails_root.to_json }
     end
   end
