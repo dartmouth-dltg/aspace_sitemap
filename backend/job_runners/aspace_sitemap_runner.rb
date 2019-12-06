@@ -2,12 +2,16 @@ require 'zip'
 require 'date'
 require 'nokogiri'
 require 'fileutils'
+require 'aspace_logger'
+require 'net/http'
+require 'uri'
 
 class AspaceSitemapRunner < JobRunner
     
   register_for_job_type('aspace_sitemap_job')
 
   def run
+    logger=Logger.new($stderr)
     # make sure the sitemap_types actually are allowed
     @sitemap_types = @json.job['sitemap_types'].reject{|st| !AppConfig[:allowed_sitemap_types_hash].keys.include?(st)}
 
@@ -30,10 +34,14 @@ class AspaceSitemapRunner < JobRunner
     unless @pui_base_url[-1] == "/"
       @pui_base_url += "/"
     end
+    
+    # get the rails root of the PUI so we can later add the sitemaps to the root directory
+    rails_root_from_pui = get_rails_root_from_public
+    logger.debug("Rails root: #{rails_root_from_pui}")
 
     # muck about with paths and filenames depending on if we are writing to the filesystem
-    index_filename = "aspace_sitemap_index"
-    sitemap_index_loc = @json.job['sitemap_use_filesys'] ? "#{@pui_base_url}static/html/" : sitemap_index_base_url
+    index_filename = "sitemap-index"
+    sitemap_index_loc = @json.job['sitemap_use_filesys'] ? "#{@pui_base_url}" : sitemap_index_base_url
     static_page_loc = "#{ASUtils.find_local_directories(nil, 'aspace_sitemap').shift}/public/pages/"
     sitemap_filename_prefix = "aspace_sitemap_part_"
 
@@ -140,11 +148,22 @@ class AspaceSitemapRunner < JobRunner
       end
 
       # writing to local filesystem
+      # these files will then be copied into the root directory on creation and on startup of the app
+      # startup copy happens in public/plugin_init.rb
       if @json.job['sitemap_use_filesys']
         files.each_with_index do |file,k|
           FileUtils.cp(file, "#{static_page_loc}#{sitemap_filename_prefix}#{k}.xml")
         end
         FileUtils.cp(index_file, "#{static_page_loc}#{index_filename}.xml")
+        
+        # write to war space
+        if rails_root_from_pui.end_with? 'WEB-INF'
+          dest = Pathname.new(rails_root_from_pui)
+          logger.debug('writing to root')
+          if dest.directory? && dest.writable?
+            FileUtils.cp_r Dir.glob("#{static_page_loc}*.xml"), dest, :verbose => true
+          end
+        end
       end
 
       # close it out
@@ -166,6 +185,15 @@ class AspaceSitemapRunner < JobRunner
       zip_file.unlink
       @job.write_output('Done.')
     end
+  end
+  
+  def get_rails_root_from_public
+    uri = URI.parse("#{@pui_base_url}static/sitemap/sitemap_root")
+    response = Net::HTTP::get_response(uri)
+    if response.code !~ /^2/
+      raise ConflictException.new("PUI did not respond with a valid Rail root")
+    end
+    response.body
   end
 
   def create_sitemap_file(sitemap, refresh_freq)
