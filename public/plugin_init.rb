@@ -2,7 +2,6 @@ Plugins::extend_aspace_routes(File.join(File.dirname(__FILE__), "routes.rb"))
 
 Rails.application.config.after_initialize do
   # copy the sitemaps into the WAR space
-  AppConfig[:sitemap_pui_rails_route] = Rails.root.to_s
   if Rails.root.basename.to_s == 'WEB-INF'  # only need to do this when running out of unpacked .war
     dest = Rails.root.dirname
     if dest.directory? && dest.writable?

@@ -5,6 +5,9 @@ require 'fileutils'
 require 'aspace_logger'
 require 'net/http'
 require 'uri'
+require 'openssl'
+require 'digest/sha1'
+require 'base64'
 
 class AspaceSitemapRunner < JobRunner
     
@@ -37,7 +40,6 @@ class AspaceSitemapRunner < JobRunner
     
     # get the rails root of the PUI so we can later add the sitemaps to the root directory
     rails_root_from_pui = get_rails_root_from_public
-    logger.debug("Rails root: #{rails_root_from_pui}")
 
     # muck about with paths and filenames depending on if we are writing to the filesystem
     index_filename = "sitemap-index"
@@ -191,9 +193,23 @@ class AspaceSitemapRunner < JobRunner
     uri = URI.parse("#{@pui_base_url}static/sitemap/sitemap_root")
     response = Net::HTTP::get_response(uri)
     if response.code !~ /^2/
-      raise ConflictException.new("PUI did not respond with a valid Rail root")
+      raise ConflictException.new("PUI did not return a valid response")
     end
-    response.body
+    cipher_iv = Base64.decode64(URI::decode(ASUtils.json_parse(response.body)['iv']))
+    enc_pui_root = Base64.decode64(URI::decode(ASUtils.json_parse(response.body)['pui_root']))
+    return decrypt_sr(enc_pui_root,cipher_iv)
+  end
+  
+  def decrypt_sr(enc_txt,iv)
+    cipher = OpenSSL::Cipher::AES.new(256, :CBC)
+    cipher.decrypt
+    cipher.key = Digest::SHA256.digest("#{AppConfig[:public_user_secret]}")
+    cipher.iv = iv
+    
+    # and decrypt it
+    decrypted = cipher.update(enc_txt)
+    decrypted << cipher.final
+    decrypted
   end
 
   def create_sitemap_file(sitemap, refresh_freq)
