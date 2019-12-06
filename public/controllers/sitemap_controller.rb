@@ -4,7 +4,7 @@ require 'base64'
 require 'uri'
 
 class SitemapController < ApplicationController
-  
+      
   def sitemap_root
     iv, pui_root = encrypt_sr
     respond_to do |format|
