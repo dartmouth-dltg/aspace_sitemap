@@ -2,3 +2,5 @@
 /gems
 /gems/*
 Gemfile.lock
+/frontend/assets/sitemaps/*.xml
+/frontend/assets/sitemaps/*.txt
