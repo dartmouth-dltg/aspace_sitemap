@@ -39,7 +39,7 @@ class AspaceSitemapRunner < JobRunner
     # muck about with paths and filenames depending on if we are writing to the filesystem
     @index_filename = "sitemap-index"
     @sitemap_index_loc = @json.job['sitemap_use_filesys'] ? "#{@pui_base_url}" : sitemap_index_base_url
-    @static_page_loc = "#{ASUtils.find_local_directories(nil, 'aspace_sitemap').shift}/public/pages/"
+    @static_page_loc = File.join("#{ASUtils.find_local_directories(nil, 'aspace_sitemap').shift}","public","sitemaps")
     @sitemap_filename_prefix = "aspace_sitemap_part_"
 
     # this should never happen
@@ -115,7 +115,7 @@ class AspaceSitemapRunner < JobRunner
       # explicitly add some 'static' pages - like the homepage!
       static_pages = ["","search?reset=true"]
       static_pages.each do |sp|
-        array.push({:loc => "#{@pui_base_url}"+sp, :lastmod => Time.now.strftime("%Y-%m-%d")})
+        array.push({:loc => File.join("#{@pui_base_url}",sp), :lastmod => Time.now.strftime("%Y-%m-%d")})
       end
 
       # split the results set into chunks of less than the sitemap entry limit
@@ -150,7 +150,7 @@ class AspaceSitemapRunner < JobRunner
       # these files will then be copied into the root directory on creation and on startup of the app
       # startup copy happens in public/plugin_init.rb
       if @json.job['sitemap_use_filesys']
-        write_to_filesystem(files,index_file,get_rails_root_from_public)
+        write_to_filesystem(files,index_file,get_rails_root_from_filesys)
       end
 
       # close it out
@@ -174,58 +174,42 @@ class AspaceSitemapRunner < JobRunner
     end
   end
   
-  def get_rails_root_from_public
-    uri = URI.parse("#{@pui_base_url}static/sitemap/sitemap_root")
-    response = Net::HTTP::get_response(uri)
-    if response.code !~ /^2/
-      raise ConflictException.new("PUI did not return a valid response")
+  def get_rails_root_from_filesys
+    File.open(File.join("#{ASUtils.find_local_directories(nil, 'aspace_sitemap').shift}","public","sitemaps","rails_path_to_pui.txt"), "r") do |f|
+      return f.read.strip
     end
-    cipher_iv = Base64.decode64(URI::decode(ASUtils.json_parse(response.body)['iv']))
-    enc_pui_root = Base64.decode64(URI::decode(ASUtils.json_parse(response.body)['pui_root']))
-    return decrypt_sr(enc_pui_root,cipher_iv)
-  end
-  
-  def decrypt_sr(enc_txt,iv)
-    cipher = OpenSSL::Cipher::AES.new(256, :CBC)
-    cipher.decrypt
-    cipher.key = Digest::SHA256.digest("#{AppConfig[:public_user_secret]}")
-    cipher.iv = iv
-    
-    # and decrypt it
-    decrypted = cipher.update(enc_txt)
-    decrypted << cipher.final
-    decrypted
   end
   
   def write_to_filesystem(files,index_file,rails_root_from_pui)
     files.each_with_index do |file,k|
-      FileUtils.cp(file, "#{@static_page_loc}#{@sitemap_filename_prefix}#{k}.xml")
+      FileUtils.cp(file, File.join("#{@static_page_loc}","#{@sitemap_filename_prefix}#{k}.xml"))
     end
-    FileUtils.cp(index_file, "#{@static_page_loc}#{@index_filename}.xml")
+    FileUtils.cp(index_file, File.join("#{@static_page_loc}","#{@index_filename}.xml"))
     
     # write to war space
     if rails_root_from_pui.end_with? 'WEB-INF'
       dest = Pathname.new(rails_root_from_pui)
       if dest.directory? && dest.writable?
         files.each_with_index do |file,k|
-          FileUtils.cp(file, "#{dest.dirname}/#{@sitemap_filename_prefix}#{k}.xml")
+          FileUtils.cp(file, File.join("#{dest.dirname}","#{@sitemap_filename_prefix}#{k}.xml"))
         end
-        FileUtils.cp(index_file, "#{dest.dirname}/#{@index_filename}.xml")
+        FileUtils.cp(index_file, File.join("#{dest.dirname}","#{@index_filename}.xml"))
         @job.write_output("Copied sitemap files to PUI root.")
         
         # update the robots.txt file
         robtxt = Pathname.new( dest.dirname + 'robots.txt' )
         if robtxt.exist? && robtxt.file?
           @job.write_output("Checking robots.txt for sitemap entry")
+          sitemaps_root_loc = File.join("#{@pui_base_url}","#{@index_filename}.xml")
           if File.foreach(robtxt).detect { |line| line =~ /sitemap/i }
             contents = File.read(robtxt)
-            File.write(robtxt, contents.gsub(/sitemap.*$/i, "Sitemap: #{@pui_base_url}#{@index_filename}.xml\n"))
+            File.write(robtxt, contents.gsub(/sitemap.*$/i, "Sitemap: #{sitemaps_root_loc}\n"))
           else
             File.open(robtxt, 'a') { |f|
-              f.write("\nSitemap: #{@pui_base_url}#{@index_filename}.xml\n")
+              f.write("\nSitemap: #{sitemaps_root_loc}.xml\n")
             }
           end
-          @job.write_output("Updated robots.txt with entry for #{@pui_base_url}#{@index_filename}.xml")
+          @job.write_output("Updated robots.txt with entry for #{sitemaps_root_loc}")
         end
       end
     end
@@ -251,7 +235,7 @@ class AspaceSitemapRunner < JobRunner
           xml.urlset('xmlns' => "https://www.sitemaps.org/schemas/sitemap/0.9") {
             files.each_with_index do |file,k|
               xml.sitemap {
-                xml.loc "#{@sitemap_index_loc}#{@sitemap_filename_prefix}#{k}.xml"
+                xml.loc File.join("#{@sitemap_index_loc}","#{@sitemap_filename_prefix}#{k}.xml")
                 xml.lastmod Time.now.strftime("%Y-%m-%d")
               }
             end
