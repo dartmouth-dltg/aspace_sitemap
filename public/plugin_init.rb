@@ -10,15 +10,15 @@ Rails.application.config.after_initialize do
     end
     
     # add the rails root to plugin space so that backend can grab it for writing to the war when job runs
-    File.open(File.join("#{ASUtils.find_local_directories(nil, 'aspace_sitemap').shift}","frontend","sitemaps","assets","rails_path_to_pui.txt"), "w+") do |f|
-      f.write(dest.to_s)
+    File.open(File.join("#{ASUtils.find_local_directories(nil, 'aspace_sitemap').shift}","frontend","assets","sitemaps","rails_path_to_pui.txt"), "w+") do |f|
+      f.write(Rails.root.to_s)
       f.close
     end
     
     robtxt = Pathname.new( dest + 'robots.txt' )
     sitemap_index = Pathname.new( dest + 'sitemap-index.xml' )
     if robtxt.exist? && robtxt.file? && sitemap_index.exist? && sitemap_index.file? && dest.directory? && dest.writable?
-      sitemap_root_loc = File.join("#{AppConfig[public_proxy_url]}","sitemap-index.xml")
+      sitemap_root_loc = File.join("#{AppConfig[:public_proxy_url]}","sitemap-index.xml")
       p "*********    #{robtxt} and #{sitemap_index} exist: checking for sitemap entry ****** "
       if File.foreach(robtxt).detect { |line| line =~ /sitemap/i }
         contents = File.read(robtxt)
