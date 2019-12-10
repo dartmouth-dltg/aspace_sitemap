@@ -2,11 +2,6 @@ require 'zip'
 require 'date'
 require 'nokogiri'
 require 'fileutils'
-require 'net/http'
-require 'uri'
-require 'openssl'
-require 'digest/sha1'
-require 'base64'
 
 class AspaceSitemapRunner < JobRunner
     
