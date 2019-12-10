@@ -39,7 +39,7 @@ class AspaceSitemapRunner < JobRunner
     # muck about with paths and filenames depending on if we are writing to the filesystem
     @index_filename = "sitemap-index"
     @sitemap_index_loc = @json.job['sitemap_use_filesys'] ? "#{@pui_base_url}" : sitemap_index_base_url
-    @static_page_loc = File.join("#{ASUtils.find_local_directories(nil, 'aspace_sitemap').shift}","public","sitemaps")
+    @static_page_loc = File.join("#{ASUtils.find_local_directories(nil, 'aspace_sitemap').shift}","frontend","assets","sitemaps")
     @sitemap_filename_prefix = "aspace_sitemap_part_"
 
     # this should never happen
@@ -175,7 +175,7 @@ class AspaceSitemapRunner < JobRunner
   end
   
   def get_rails_root_from_filesys
-    File.open(File.join("#{ASUtils.find_local_directories(nil, 'aspace_sitemap').shift}","public","sitemaps","rails_path_to_pui.txt"), "r") do |f|
+    File.open(File.join("#{ASUtils.find_local_directories(nil, 'aspace_sitemap').shift}","frontend","assets","sitemaps","rails_path_to_pui.txt"), "r") do |f|
       return f.read.strip
     end
   end

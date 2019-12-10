@@ -5,12 +5,12 @@ Rails.application.config.after_initialize do
   if Rails.root.basename.to_s == 'WEB-INF'  # only need to do this when running out of unpacked .war
     dest = Rails.root.dirname
     if dest.directory? && dest.writable?
-      sitemap_files = File.join("#{ASUtils.find_local_directories(nil, 'aspace_sitemap').shift}","public","sitemaps","*.xml")
+      sitemap_files = File.join("#{ASUtils.find_local_directories(nil, 'aspace_sitemap').shift}","frontend","assets","sitemaps","*.xml")
       FileUtils.cp_r Dir.glob(sitemap_files), dest, :verbose => true
     end
     
     # add the rails root to plugin space so that backend can grab it for writing to the war when job runs
-    File.open(File.join("#{ASUtils.find_local_directories(nil, 'aspace_sitemap').shift}","public","sitemaps","rails_path_to_pui.txt"), "w+") do |f|
+    File.open(File.join("#{ASUtils.find_local_directories(nil, 'aspace_sitemap').shift}","frontend","sitemaps","assets","rails_path_to_pui.txt"), "w+") do |f|
       f.write(dest.to_s)
       f.close
     end
