@@ -27,7 +27,10 @@ class AspaceSitemapRunner < JobRunner
     end
     # make sure the sitemap url starts with https://
     unless sitemap_index_base_url =~ /^https:\/\//
-      sitemap_index_base_url.prepend('https://')
+      if sitemap_index_base_url =~ /^http:\/\//
+        sitemap_index_base_url.gsub!('http','https')
+      else sitemap_index_base_url.prepend('https://')
+      end
     end
     refresh_freq = @json.job['sitemap_refresh_freq']
     @pui_base_url = AppConfig[:public_proxy_url]
