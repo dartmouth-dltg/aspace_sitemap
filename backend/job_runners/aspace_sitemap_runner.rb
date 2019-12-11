@@ -22,7 +22,10 @@ class AspaceSitemapRunner < JobRunner
     end
     # make sure the sitemap url starts with https://
     unless sitemap_index_base_url =~ /^https:\/\//
-      sitemap_index_base_url.prepend('https://')
+      if sitemap_index_base_url =~ /^http:\/\//
+        sitemap_index_base_url.gsub!('http','https')
+      else sitemap_index_base_url.prepend('https://')
+      end
     end
     refresh_freq = @json.job['sitemap_refresh_freq']
     @pui_base_url = AppConfig[:public_proxy_url]
@@ -30,12 +33,12 @@ class AspaceSitemapRunner < JobRunner
     unless @pui_base_url[-1] == "/"
       @pui_base_url += "/"
     end
-
+    
     # muck about with paths and filenames depending on if we are writing to the filesystem
-    index_filename = "aspace_sitemap_index"
-    sitemap_index_loc = @json.job['sitemap_use_filesys'] ? "#{@pui_base_url}static/html/" : sitemap_index_base_url
-    static_page_loc = "#{ASUtils.find_local_directories(nil, 'aspace_sitemap').shift}/public/pages/"
-    sitemap_filename_prefix = "aspace_sitemap_part_"
+    @index_filename = "sitemap-index"
+    @sitemap_index_loc = @json.job['sitemap_use_filesys'] ? "#{@pui_base_url}" : sitemap_index_base_url
+    @static_page_loc = File.join("#{ASUtils.find_local_directories(nil, 'aspace_sitemap').shift}","frontend","assets","sitemaps")
+    @sitemap_filename_prefix = "aspace_sitemap_part_"
 
     # this should never happen
     if @sitemap_types.count == 0
@@ -49,6 +52,8 @@ class AspaceSitemapRunner < JobRunner
     end
 
     @job.write_output('Generating sitemap')
+    
+    # initialize some temp arrays
     pub_repos = []
     array = []
     has_ancs = []
@@ -108,7 +113,7 @@ class AspaceSitemapRunner < JobRunner
       # explicitly add some 'static' pages - like the homepage!
       static_pages = ["","search?reset=true"]
       static_pages.each do |sp|
-        array.push({:loc => "#{@pui_base_url}"+sp, :lastmod => Time.now.strftime("%Y-%m-%d")})
+        array.push({:loc => File.join("#{@pui_base_url}",sp), :lastmod => Time.now.strftime("%Y-%m-%d")})
       end
 
       # split the results set into chunks of less than the sitemap entry limit
@@ -121,30 +126,29 @@ class AspaceSitemapRunner < JobRunner
 
       # iterate through the sitemap pieces and build our xml files
       sitemap_parts.each_with_index do |sitemap,k|
-        files[k] = Tempfile.new(["#{sitemap_filename_prefix}#{k}", ".xml"])
+        files[k] = Tempfile.new(["#{@sitemap_filename_prefix}#{k}", ".xml"])
         files[k].write(create_sitemap_file(sitemap, refresh_freq).to_xml)
         files[k].rewind
       end
 
       # create a sitemap index file
-      index_file = Tempfile.new([index_filename,".xml"])
-      index_file.write(create_sitemap_index(files, sitemap_index_loc, sitemap_filename_prefix).to_xml)
+      index_file = Tempfile.new([@index_filename,".xml"])
+      index_file.write(create_sitemap_index(files).to_xml)
       index_file.rewind
 
       # wrap them all into a zip file
       Zip::File.open(zip_file.path, Zip::File::CREATE) do |zip|
         files.each_with_index do |file,k|
-          zip.add("#{sitemap_filename_prefix}#{k}.xml", file.path)
+          zip.add("#{@sitemap_filename_prefix}#{k}.xml", file.path)
         end
-        zip.add("#{index_filename}.xml", index_file.path)
+        zip.add("#{@index_filename}.xml", index_file.path)
       end
 
       # writing to local filesystem
+      # these files will then be copied into the root directory on creation and on startup of the app
+      # startup copy happens in public/plugin_init.rb
       if @json.job['sitemap_use_filesys']
-        files.each_with_index do |file,k|
-          FileUtils.cp(file, "#{static_page_loc}#{sitemap_filename_prefix}#{k}.xml")
-        end
-        FileUtils.cp(index_file, "#{static_page_loc}#{index_filename}.xml")
+        write_to_filesystem(files,index_file,get_rails_root_from_filesys)
       end
 
       # close it out
@@ -167,7 +171,48 @@ class AspaceSitemapRunner < JobRunner
       @job.write_output('Done.')
     end
   end
-
+  
+  def get_rails_root_from_filesys
+    File.open(File.join("#{ASUtils.find_local_directories(nil, 'aspace_sitemap').shift}","frontend","rails_path_to_pui.txt"), "r") do |f|
+      return f.read.strip
+    end
+  end
+  
+  def write_to_filesystem(files,index_file,rails_root_from_pui)
+    files.each_with_index do |file,k|
+      FileUtils.cp(file, File.join("#{@static_page_loc}","#{@sitemap_filename_prefix}#{k}.xml"))
+    end
+    FileUtils.cp(index_file, File.join("#{@static_page_loc}","#{@index_filename}.xml"))
+    
+    # write to war space
+    if rails_root_from_pui.end_with? 'WEB-INF'
+      dest = Pathname.new(rails_root_from_pui)
+      if dest.directory? && dest.writable?
+        files.each_with_index do |file,k|
+          FileUtils.cp(file, File.join("#{dest.dirname}","#{@sitemap_filename_prefix}#{k}.xml"))
+        end
+        FileUtils.cp(index_file, File.join("#{dest.dirname}","#{@index_filename}.xml"))
+        @job.write_output("Copied sitemap files to PUI root.")
+        
+        # update the robots.txt file
+        robtxt = Pathname.new( dest.dirname + 'robots.txt' )
+        if robtxt.exist? && robtxt.file?
+          @job.write_output("Checking robots.txt for sitemap entry")
+          sitemaps_root_loc = File.join("#{@pui_base_url}","#{@index_filename}.xml")
+          if File.foreach(robtxt).detect { |line| line =~ /sitemap/i }
+            contents = File.read(robtxt)
+            File.write(robtxt, contents.gsub(/sitemap.*$/i, "Sitemap: #{sitemaps_root_loc}\n"))
+          else
+            File.open(robtxt, 'a') { |f|
+              f.write("\nSitemap: #{sitemaps_root_loc}.xml\n")
+            }
+          end
+          @job.write_output("Updated robots.txt with entry for #{sitemaps_root_loc}")
+        end
+      end
+    end
+  end
+  
   def create_sitemap_file(sitemap, refresh_freq)
     sitemap_build = Nokogiri::XML::Builder.new(:encoding => 'UTF-8') do |xml|
           xml.urlset('xmlns' => "https://www.sitemaps.org/schemas/sitemap/0.9") {
@@ -183,12 +228,12 @@ class AspaceSitemapRunner < JobRunner
     sitemap_build
   end
 
-  def create_sitemap_index(files, sitemap_index_loc, sitemap_filename_prefix)
+  def create_sitemap_index(files)
     index_build = Nokogiri::XML::Builder.new(:encoding => 'UTF-8') do |xml|
           xml.urlset('xmlns' => "https://www.sitemaps.org/schemas/sitemap/0.9") {
             files.each_with_index do |file,k|
               xml.sitemap {
-                xml.loc "#{sitemap_index_loc}#{sitemap_filename_prefix}#{k}.xml"
+                xml.loc File.join("#{@sitemap_index_loc}","#{@sitemap_filename_prefix}#{k}.xml")
                 xml.lastmod Time.now.strftime("%Y-%m-%d")
               }
             end

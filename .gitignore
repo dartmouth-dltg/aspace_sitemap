@@ -2,3 +2,5 @@
 /gems
 /gems/*
 Gemfile.lock
+/frontend/assets/sitemaps/*.xml
+/frontend/rails_path_to_pui.txt
