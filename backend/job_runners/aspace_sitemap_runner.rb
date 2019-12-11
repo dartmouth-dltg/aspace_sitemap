@@ -173,7 +173,7 @@ class AspaceSitemapRunner < JobRunner
   end
   
   def get_rails_root_from_filesys
-    File.open(File.join("#{ASUtils.find_local_directories(nil, 'aspace_sitemap').shift}","frontend","assets","sitemaps","rails_path_to_pui.txt"), "r") do |f|
+    File.open(File.join("#{ASUtils.find_local_directories(nil, 'aspace_sitemap').shift}","frontend","rails_path_to_pui.txt"), "r") do |f|
       return f.read.strip
     end
   end

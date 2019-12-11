@@ -3,4 +3,4 @@
 /gems/*
 Gemfile.lock
 /frontend/assets/sitemaps/*.xml
-/frontend/assets/sitemaps/*.txt
+/frontend/rails_path_to_pui.txt

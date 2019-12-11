@@ -10,7 +10,7 @@ Rails.application.config.after_initialize do
     end
     
     # add the rails root to plugin space so that backend can grab it for writing to the war when job runs
-    File.open(File.join("#{ASUtils.find_local_directories(nil, 'aspace_sitemap').shift}","frontend","assets","sitemaps","rails_path_to_pui.txt"), "w+") do |f|
+    File.open(File.join("#{ASUtils.find_local_directories(nil, 'aspace_sitemap').shift}","frontend","rails_path_to_pui.txt"), "w+") do |f|
       f.write(Rails.root.to_s)
       f.close
     end
