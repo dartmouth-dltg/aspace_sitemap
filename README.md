@@ -19,6 +19,8 @@ AppConfig[:plugins] = ['some_plugin','aspace_sitemap']
 ### Note
 For users running ArchivesSpace versions older than v2.6.0, please note that slug related options are not available.
 
+Institutions with large numbers of published objects may need to increase the memory alloted to the application. See http://archivesspace.github.io/archivesspace/user/tuning-archivesspace/
+
 ## What does it do?
 The plugin adds a new job that generates a sitemap (at least one sitemap with a sitemap index)
 for the PUI. The file(s) can be downloaded and placed on a server of your choice for submission

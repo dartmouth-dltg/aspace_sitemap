@@ -87,9 +87,9 @@ class AspaceSitemapRunner < JobRunner
       
       @job.write_output('Checking for unpublished ancestors')
       
-      # use 50 for group size, though maybe tune this depending on memory?
+      # use 25 for group size, though maybe tune this depending on memory?
       # build a list of objects with unpubbed ancestors
-      has_ancs.each_slice(50).with_index do |group,i|
+      has_ancs.each_slice(25).with_index do |group,i|
         if i % 400 == 0 && i != 0
           @job.write_output('Still checking for unpublished ancestors')
         end
