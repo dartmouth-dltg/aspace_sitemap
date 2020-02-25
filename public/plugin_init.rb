@@ -5,7 +5,7 @@ Rails.application.config.after_initialize do
   if Rails.root.basename.to_s == 'WEB-INF'  # only need to do this when running out of unpacked .war
     dest = Rails.root.dirname
     if dest.directory? && dest.writable?
-      sitemap_files = File.join("#{ASUtils.find_local_directories(nil, 'aspace_sitemap').shift}","frontend","assets","sitemaps","*.xml")
+      sitemap_files = File.join(AppConfig[:data_directory], "pui_sitemaps","*.xml")
       FileUtils.cp_r Dir.glob(sitemap_files), dest, :verbose => true
     end
     

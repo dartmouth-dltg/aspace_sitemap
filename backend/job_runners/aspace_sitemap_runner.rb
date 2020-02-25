@@ -37,7 +37,7 @@ class AspaceSitemapRunner < JobRunner
     # muck about with paths and filenames depending on if we are writing to the filesystem
     @index_filename = "sitemap-index"
     @sitemap_index_loc = @json.job['sitemap_use_filesys'] ? "#{@pui_base_url}" : sitemap_index_base_url
-    @static_page_loc = File.join("#{ASUtils.find_local_directories(nil, 'aspace_sitemap').shift}","frontend","assets","sitemaps")
+    @static_page_loc = File.join(AppConfig[:data_directory],"pui_sitemaps")
     @sitemap_filename_prefix = "aspace_sitemap_part_"
 
     # this should never happen

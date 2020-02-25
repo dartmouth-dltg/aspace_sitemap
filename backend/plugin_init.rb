@@ -1,3 +1,5 @@
+require 'fileutils'
+
 # this is ugly since we set these in both the frontend and backend
 # better to have end user set in config or not?
 AppConfig[:allowed_sitemap_types_hash] = {'resource' => 'resources',
@@ -14,3 +16,11 @@ AppConfig[:sitemap_has_ancestor_types] = ['archival_objects','digital_object_com
 AppConfig[:sitemap_agent_types] = ['people','families','corporate_entities','software']
 AppConfig[:sitemap_frequencies] = ['yearly', 'monthly', 'daily', 'hourly', 'always', 'never']
 AppConfig[:aspace_sitemap_default_limit] = 50000
+
+# create the pui sitemaps directory if it does not already exist
+ArchivesSpaceService.loaded_hook do
+  dirname = File.join(AppConfig[:data_directory], "pui_sitemaps")
+  unless File.directory?(dirname)
+    FileUtils.mkdir_p(dirname)
+  end  
+end
