@@ -16,17 +16,27 @@ class AspaceSitemapRunner < JobRunner
     default_limit = AppConfig[:aspace_sitemap_default_limit]
     sitemap_limit = @json.job['sitemap_limit'].to_i
     sitemap_index_base_url = @json.job['sitemap_baseurl']
-    # make sure the sitemap url ends in a "/"
-    unless sitemap_index_base_url[-1] == "/"
-      sitemap_index_base_url += "/"
+    
+    # check to make sure either that write to fielsystem is selected or the sitemap base url is available
+    if sitemap_index_base_url.nil? && @json.job['sitemap_use_filesys'] === false
+      @job.write_output('Either "write to filesystem" must be selected or you must supply a sitemap base url. No sitemap generated.')
+      return
     end
-    # make sure the sitemap url starts with https://
-    unless sitemap_index_base_url =~ /^https:\/\//
-      if sitemap_index_base_url =~ /^http:\/\//
-        sitemap_index_base_url.gsub!('http','https')
-      else sitemap_index_base_url.prepend('https://')
+    
+    unless sitemap_index_base_url.nil?
+      # make sure the sitemap url ends in a "/"
+      unless sitemap_index_base_url[-1] == "/"
+        sitemap_index_base_url += "/"
+      end
+      # make sure the sitemap url starts with https://
+      unless sitemap_index_base_url =~ /^https:\/\//
+        if sitemap_index_base_url =~ /^http:\/\//
+          sitemap_index_base_url.gsub!('http','https')
+        else sitemap_index_base_url.prepend('https://')
+        end
       end
     end
+    
     refresh_freq = @json.job['sitemap_refresh_freq']
     @pui_base_url = AppConfig[:public_proxy_url]
     # make sure the public url ends in a "/"
