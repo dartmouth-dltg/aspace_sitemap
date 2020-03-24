@@ -11,7 +11,6 @@
       },
       "sitemap_baseurl" => {
         "type" => "string",
-        "ifmissing" => "error"
       },
       "sitemap_limit" => {
         "type" => "string",
