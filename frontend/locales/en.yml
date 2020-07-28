@@ -4,7 +4,7 @@ en:
     _plural: ArchivesSpace PUI Sitemap Jobs
     sitemap_form_help: This job will generate one or more sitemap files together with an index file (if there is more than one sitemap) for the PUI. The files will stored in data/pui_sitemaps/. The job will also create a zip file that can then be moved to an external server.
     sitemap_baseurl: Sitemap Index base url
-    sitemap_baseurl_help: Where will you be placing the sitemaps? Example - https://library.dartmouth.edu/sitemaps/ This will be ignored if you choose the write to the filesystem option (below)
+    sitemap_baseurl_help: Where will you be placing the sitemaps? Example - https://library.dartmouth.edu/sitemaps/ This will be ignored if you choose the write to the filesystem option
     sitemap_limit: Entries per sitemap
     sitemap_limit_help: How many sitemap records per file? Google limits this to 50,000 records per file.
     sitemap_use_slugs: Use slugs for sitemap
