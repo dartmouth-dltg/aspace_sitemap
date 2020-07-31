@@ -225,7 +225,7 @@ class AspaceSitemapRunner < JobRunner
   
   def create_sitemap_file(sitemap, refresh_freq)
     sitemap_build = Nokogiri::XML::Builder.new(:encoding => 'UTF-8') do |xml|
-          xml.urlset('xmlns' => "https://www.sitemaps.org/schemas/sitemap/0.9") {
+          xml.urlset('xmlns' => "http://www.sitemaps.org/schemas/sitemap/0.9") {
             sitemap.each do |entry|
               xml.url {
                 xml.loc entry[:loc]
@@ -240,7 +240,7 @@ class AspaceSitemapRunner < JobRunner
 
   def create_sitemap_index(files)
     index_build = Nokogiri::XML::Builder.new(:encoding => 'UTF-8') do |xml|
-          xml.sitemapindex('xmlns' => "https://www.sitemaps.org/schemas/sitemap/0.9") {
+          xml.sitemapindex('xmlns' => "http://www.sitemaps.org/schemas/sitemap/0.9") {
             files.each_with_index do |file,k|
               xml.sitemap {
                 xml.loc File.join("#{@sitemap_index_loc}","#{@sitemap_filename_prefix}#{k}.xml")
