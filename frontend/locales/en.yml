@@ -7,8 +7,10 @@ en:
     sitemap_baseurl_help: Where will you be placing the sitemaps? Example - https://library.dartmouth.edu/sitemaps/ This will be ignored if you choose the write to the filesystem option
     sitemap_limit: Entries per sitemap
     sitemap_limit_help: How many sitemap records per file? Google limits this to 50,000 records per file.
-    sitemap_use_slugs: Use slugs for sitemap
-    sitemap_use_slugs_help: Use the generated human readable slugs for the sitemap <loc> entries when available
+    sitemap_use_arks: Use ARKs
+    sitemap_use_neither: Not Used
+    sitemap_use_slugs: Use slugs
+    sitemap_use_slugs_or_arks_help: Use the generated human readable slugs or ARKs for the sitemap <loc> entries when available
     sitemap_use_filesys: Write to local filesystem 
     sitemap_use_filesys_help: This will write the sitemaps to the PUI webspace and local filesystem and update the PUI robots.txt file with a sitemap entry. The sitemaps will be stored in 'data/pui_sitemaps/'
     sitemap_refresh_freq: Typical update frequency
