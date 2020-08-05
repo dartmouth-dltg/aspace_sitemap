@@ -17,7 +17,7 @@ class AspaceSitemapRunner < JobRunner
     sitemap_limit = @json.job['sitemap_limit'].to_i
     sitemap_index_base_url = @json.job['sitemap_baseurl']
     
-    # check to make sure either that write to fielsystem is selected or the sitemap base url is available
+    # check to make sure either that write to filesystem is selected or the sitemap base url is available
     if sitemap_index_base_url.nil? && @json.job['sitemap_use_filesys'] === false
       @job.write_output('Either "write to filesystem" must be selected or you must supply a sitemap base url. No sitemap generated.')
       return
