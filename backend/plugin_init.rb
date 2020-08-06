@@ -14,6 +14,7 @@ AppConfig[:allowed_sitemap_types_hash] = {'resource' => 'resources',
                                           }
 AppConfig[:sitemap_has_ancestor_types] = ['archival_objects','digital_object_components']
 AppConfig[:sitemap_agent_types] = ['people','families','corporate_entities','software']
+AppConfig[:sitemap_ark_types] = ['resource','archival_object']
 AppConfig[:sitemap_frequencies] = ['yearly', 'monthly', 'daily', 'hourly', 'always', 'never']
 AppConfig[:aspace_sitemap_default_limit] = 50000
 

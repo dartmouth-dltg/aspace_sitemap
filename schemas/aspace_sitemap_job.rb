@@ -20,8 +20,11 @@
         "type" => "string",
         "ifmissing" => "error"
       },
-       "sitemap_use_slugs_or_arks" => {
-        "type" => "string",
+       "sitemap_use_slugs" => {
+        "type" => "boolean",
+      },
+      "sitemap_use_arks" => {
+        "type" => "boolean",
       },
       "sitemap_types" => {
         "type" => "array",

@@ -13,6 +13,8 @@ class AspaceSitemapRunner < JobRunner
 
     # setup some of our other variables
     @use_slugs = AppConfig.has_key?(:use_human_readable_urls) && AppConfig[:use_human_readable_urls] ? @json.job['sitemap_use_slugs'] : false
+    @use_arks = AppConfig.has_key?(:arks_enabled) && AppConfig[:arks_enabled] ? @json.job['sitemap_use_arks'] : false
+
     default_limit = AppConfig[:aspace_sitemap_default_limit]
     sitemap_limit = @json.job['sitemap_limit'].to_i
     sitemap_index_base_url = @json.job['sitemap_baseurl']
@@ -276,16 +278,24 @@ class AspaceSitemapRunner < JobRunner
     else
       row[:uri] = ["repositories",row[:repo_id],row[:source],row[:id]].join("/")
     end
-    # use slugs if set, otherwise use the standard url form based on ids
+    
+    # standard location
+    row[:loc] = ["#{@pui_base_url.chop}",row[:uri]].join("/")
+
+    # use slugs if set use that, making sure to strip any whitespace
     if @use_slugs && !row[:slug].nil?
       # agents have a different location string pattern
       if AppConfig[:sitemap_agent_types].include?(row[:source])
         row[:source] = "agents"
       end
-      row[:loc] = ["#{@pui_base_url.chop}",row[:source],row[:slug]].join("/")
-    else
-      row[:loc] = ["#{@pui_base_url.chop}",row[:uri]].join("/")
+      row[:loc] = ["#{@pui_base_url.chop}",row[:source],row[:slug].strip].join("/")
     end
+    
+    # use ARKs for resources and archival_objects if they are se, making sure to strip any whitespace
+    if @use_arks && !row[:external_ark_url].nil? && row[:external_ark_url] != '0' && AppConfig[:sitemap_ark_types].include?(row[:source].singularize)
+      row[:loc] = row[:external_ark_url].strip
+    end
+    
     # pop a "/" on the front of the uri for use later
     row[:uri].prepend("/")
     row[:lastmod] = row[:lastmod].strftime("%Y-%m-%d")
@@ -293,6 +303,7 @@ class AspaceSitemapRunner < JobRunner
     # remove columns we don't need
     row.delete(:publish)
     row.delete(:slug) if @use_slugs
+    row.delete(:external_ark_url) if @use_arks
   end
 
   def query_string
@@ -305,6 +316,8 @@ class AspaceSitemapRunner < JobRunner
         repo_line = "'0' AS repo_id"
       else repo_line = "repo_id"
       end
+      
+      ark_query = @use_arks && AppConfig[:sitemap_ark_types].include?(type) ? "external_ark_url" : "'0' AS external_ark_url" 
 
       queries <<
       "(SELECT
@@ -312,6 +325,7 @@ class AspaceSitemapRunner < JobRunner
           #{repo_line},
           id,
           #{slug_query}
+          #{ark_query},
           user_mtime AS lastmod,
           '#{AppConfig[:allowed_sitemap_types_hash][type]}' AS source
         FROM
@@ -328,6 +342,7 @@ class AspaceSitemapRunner < JobRunner
     #  repo_id,
     #  id,
     #  slug,
+    #  external_ark_url,
     #  user_mtime AS lastmod,
     #  'archival_objects' AS source
     #FROM
@@ -340,6 +355,7 @@ class AspaceSitemapRunner < JobRunner
     #  repo_id,
     #  id,
     #  slug,
+    #  external_ark_url,
     #  user_mtime AS lastmod,
     #  'resources' AS source
     #FROM

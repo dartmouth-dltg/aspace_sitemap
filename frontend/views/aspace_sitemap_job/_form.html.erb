@@ -8,26 +8,17 @@
   <span class="help-block"><%= t('aspace_sitemap_job.sitemap_refresh_freq_help') %></span>
   <%= form.label_and_select "sitemap_refresh_freq", AppConfig[:sitemap_frequencies], {:field_opts => {:required => true}} %>
 </div>
-<% if (AppConfig.has_key?(:use_human_readable_urls) && AppConfig[:use_human_readable_urls]) || (AppConfig.has_key?(:arks_enabled) && AppConfig[:arks_enabled]) %>
-  <div class="form-group">
-  <span class="help-block"><%= t('aspace_sitemap_job.sitemap_use_slugs_or_arks_help') %></span>
-  <% if AppConfig.has_key?(:use_human_readable_urls) && AppConfig[:use_human_readable_urls] %>
-    <div class="col-sm-12">
-      <%= label_tag 'sitemap_use_slugs', t('aspace_sitemap_job.sitemap_use_slugs'), class: 'col-sm-2' %>
-      <%= radio_button_tag "job[use_arks_or_slugs]", "sitemap_use_slugs" %>
-    </div>
-  <% end %>
-  <% if AppConfig.has_key?(:arks_enabled) && AppConfig[:arks_enabled] %>
-    <div class="col-sm-12">
-      <%= label_tag 'sitemap_use_arks', t('aspace_sitemap_job.sitemap_use_arks'), class: 'col-sm-2' %>
-      <%= radio_button_tag "job[use_arks_or_slugs]", "sitemap_use_arks"  %>
-    </div>
-  <% end %>
-    <div class="col-sm-12">
-      <%= label_tag 'sitemap_use_neither', t('aspace_sitemap_job.sitemap_use_neither'), class: 'col-sm-2' %>
-      <%= radio_button_tag "job[use_arks_or_slugs]", "sitemap_use_neither", true %>
-    </div>
-  </div>
+<% if AppConfig.has_key?(:use_human_readable_urls) && AppConfig[:use_human_readable_urls] %>
+<div class="form-group">
+  <span class="help-block"><%= t('aspace_sitemap_job.sitemap_use_slugs_help') %></span>
+  <%= form.label_and_boolean "sitemap_use_slugs" %>
+</div>
+<% end %>
+<% if AppConfig.has_key?(:arks_enabled) && AppConfig[:arks_enabled] %>
+<div class="form-group">
+  <span class="help-block"><%= t('aspace_sitemap_job.sitemap_use_arks_help') %></span>
+  <%= form.label_and_boolean "sitemap_use_arks" %>
+</div>
 <% end %>
 <div class="form-group">
   <span class="help-block"><%= t('aspace_sitemap_job.sitemap_use_filesys_help') %></span>
