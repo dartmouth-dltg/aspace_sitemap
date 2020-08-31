@@ -291,7 +291,7 @@ class AspaceSitemapRunner < JobRunner
       row[:loc] = ["#{@pui_base_url.chop}",row[:source],row[:slug].strip].join("/")
     end
     
-    # use ARKs for resources and archival_objects if they are se, making sure to strip any whitespace
+    # use ARKs for resources and archival_objects if they are set, making sure to strip any whitespace
     if @use_arks && !row[:external_ark_url].nil? && row[:external_ark_url] != '0' && AppConfig[:sitemap_ark_types].include?(row[:source].singularize)
       row[:loc] = row[:external_ark_url].strip
     end
