@@ -1,29 +1,33 @@
 <%
   sitemap_types = job['sitemap_types'].reject{|st| !AppConfig[:allowed_sitemap_types].include?(st)}
+  sitemap_list = []
+  sitemap_types.each do |st|
+    sitemap_list << I18n.t("aspace_sitemap_job.sitemap_types_#{st}")
+  end
 %>
-<div class="form-group">
-  <label class="col-sm-3 control-label"><%= I18n.t("aspace_sitemap_job.sitemap_types_list") %></label>
-  <div class="col-sm-9 controls label-only"><%= sitemap_types.compact().join(', ') %></div>
+<div class="form-group d-flex">
+  <label class="col-sm-3 control-label text-right"><%= I18n.t("aspace_sitemap_job.sitemap_types_list") %></label>
+  <div class="col-sm-9 controls label-only"><%= sitemap_list.compact().join(', ') %></div>
 </div>
-<div class="form-group">
-  <label class="col-sm-3 control-label"><%= I18n.t("aspace_sitemap_job.sitemap_refresh_freq") %></label>
+<div class="form-group d-flex">
+  <label class="col-sm-3 control-label text-right"><%= I18n.t("aspace_sitemap_job.sitemap_refresh_freq") %></label>
   <div class="col-sm-9 controls label-only"><%= job['sitemap_refresh_freq'] %></div>
 </div>
 <% if AppConfig.has_key?(:use_human_readable_urls) && AppConfig[:use_human_readable_urls] %>
-<div class="form-group">
-  <label class="col-sm-3 control-label"><%= I18n.t("aspace_sitemap_job.sitemap_use_slugs") %></label>
+<div class="form-group d-flex">
+  <label class="col-sm-3 control-label text-right"><%= I18n.t("aspace_sitemap_job.sitemap_use_slugs") %></label>
   <div class="col-sm-9 controls label-only"><%= job['sitemap_use_slugs'] %></div>
 </div>
 <% end %>
-<div class="form-group">
-  <label class="col-sm-3 control-label"><%= I18n.t("aspace_sitemap_job.sitemap_use_filesys") %></label>
+<div class="form-group d-flex">
+  <label class="col-sm-3 control-label text-right"><%= I18n.t("aspace_sitemap_job.sitemap_use_filesys") %></label>
   <div class="col-sm-9 controls label-only"><%= job['sitemap_use_filesys'] %></div>
 </div>
-<div class="form-group">
-  <label class="col-sm-3 control-label"><%= I18n.t("aspace_sitemap_job.sitemap_baseurl") %></label>
-  <div class="col-sm-9 controls label-only"><%= job['sitemap_use_filesys'] ? "#{AppConfig[:public_proxy_url]}/static/html/" : job['sitemap_baseurl'] %></div>
+<div class="form-group d-flex">
+  <label class="col-sm-3 control-label text-right"><%= I18n.t("aspace_sitemap_job.sitemap_baseurl") %></label>
+  <div class="col-sm-9 controls label-only"><%= job['sitemap_use_filesys'] ? "#{AppConfig[:public_proxy_url]}" : job['sitemap_baseurl'] %></div>
 </div>
-<div class="form-group">
-  <label class="col-sm-3 control-label"><%= I18n.t("aspace_sitemap_job.sitemap_limit") %></label>
+<div class="form-group d-flex">
+  <label class="col-sm-3 control-label text-right"><%= I18n.t("aspace_sitemap_job.sitemap_limit") %></label>
   <div class="col-sm-9 controls label-only"><%= job['sitemap_limit'] %></div>
 </div>
