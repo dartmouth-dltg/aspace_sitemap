@@ -24,6 +24,6 @@
 </div>
 <div class="form-group required">
   <span class="help-block"><%= t('aspace_sitemap_job.sitemap_limit_help') %></span>
-  <% default_limit = AppConfig.has_key?(:aspace_sitemap_default_limit) ? AppConfig[:aspace_sitemap_default_limit] : 50000 %>
+  <% default_limit = AppConfig.has_key?(:aspace_sitemap_default_limit) ? AppConfig[:aspace_sitemap_default_limit] : 20000 %>
   <%= form.label_and_textfield "sitemap_limit", {:field_opts => {:size => 10, :required => true, :type => "number", :value => default_limit}} %>
 </div>
