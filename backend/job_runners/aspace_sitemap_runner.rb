@@ -37,7 +37,7 @@ class AspaceSitemapRunner < JobRunner
       end
     end
     
-    refresh_freq = @json.job['sitemap_refresh_freq']
+    @refresh_freq = @json.job['sitemap_refresh_freq']
     @pui_base_url = AppConfig[:public_proxy_url]
     # make sure the public url ends in a "/"
     unless @pui_base_url[-1] == "/"
@@ -64,14 +64,24 @@ class AspaceSitemapRunner < JobRunner
     @job.write_output('Generating sitemap')
     
     # initialize some temp arrays
-    pub_repos = []
-    array = []
-    has_ancs = []
-    files = []
-    hua_deletes = []
+    @sm_files = []
+    @sitemap_parts = []
+    @sm_file_num = 0
 
     begin
+
+      # explicitly add some 'static' pages - like the homepage!
+      sm_static_array = []
+      static_pages = ["","search?reset=true"]
+      static_pages.each do |sp|
+        sm_static_array.push({:loc => File.join("#{@pui_base_url}",sp), :lastmod => Time.now.strftime("%Y-%m-%d")})
+      end
+
+      write_sm_temp_file(sm_static_array)
+      sm_static_array.clear
+
       # get the pubished repos so we can reject any objects that are marked published, but are part of an unpubbed repo
+      pub_repos = []
       DB.open do |db|
         db.fetch("SELECT id FROM repository WHERE publish = 1") do |repo|
           pub_repos << repo.to_hash[:id].to_i
@@ -79,76 +89,36 @@ class AspaceSitemapRunner < JobRunner
       end
 
       # fetch all of the objects marked as published
+      sm_array = []
       DB.open do |db|
         db.fetch(query_string) do |result|
           row = result.to_hash
           fix_row(row)
-          array.push(row)
+          sm_array.push(row)
+          if (sm_array.count == sitemap_limit)
+            finalize_sm_batch(sm_array, pub_repos)
+            sm_array.clear
+          end
         end
       end
-
-      if array.count == 0
-        @job.write_output('No published objects found. No sitemap generated.')
-        return
-      end
-      
-      # select published objects that can have ancestors so we can check them for unpubbed ancestors
-      has_ancs = array.select { |row| AppConfig[:sitemap_has_ancestor_types].include?(row[:source]) }
-      
-      @job.write_output('Checking for unpublished ancestors')
-      
-      # use 25 for group size, though maybe tune this depending on memory?
-      # build a list of objects with unpubbed ancestors
-      has_ancs.each_slice(25).with_index do |group,i|
-        if i % 400 == 0 && i != 0
-          @job.write_output('Still checking for unpublished ancestors')
-        end
-        hua_deletes.concat(has_unpublished_ancestor(group))
-      end
-      
-      # remove the objects with unpubbed ancestors from our list of published objects
-      # also check for objects that are scoped to a repo but live in an unpubbed repo and remove those
-      # do we really need to inform the end user about items not included? Useful or clutter?
-      array.delete_if do |row|
-        next if AppConfig[:sitemap_agent_types].include?(row[:source])
-        if !pub_repos.include?(row[:repo_id].to_i)
-          @job.write_output("Sitemap will not include /repositories/#{row[:repo_id]}/#{row[:source]}/#{row[:id]} since it is part of an unpublished repository")
-          true
-        elsif hua_deletes.include?(row[:uri])
-          @job.write_output("Sitemap will not include /repositories/#{row[:repo_id]}/#{row[:source]}/#{row[:id]} since it has an unpublished ancestor")
-          true
-        end
-      end
-
-      # explicitly add some 'static' pages - like the homepage!
-      static_pages = ["","search?reset=true"]
-      static_pages.each do |sp|
-        array.push({:loc => File.join("#{@pui_base_url}",sp), :lastmod => Time.now.strftime("%Y-%m-%d")})
-      end
-
-      # split the results set into chunks of less than the sitemap entry limit
-      sitemap_parts = array.each_slice(sitemap_limit).to_a
 
       # initialize a zip file
       zip_file = ASUtils.tempfile("aspace_sitemap_zip")
       # open with the OutputStream class to initialize the zip structure correctly
       Zip::OutputStream.open(zip_file) { |zos| }
 
-      # iterate through the sitemap pieces and build our xml files
-      sitemap_parts.each_with_index do |sitemap,k|
-        files[k] = Tempfile.new(["#{@sitemap_filename_prefix}#{k}", ".xml"])
-        files[k].write(create_sitemap_file(sitemap, refresh_freq).to_xml)
-        files[k].rewind
-      end
-
       # create a sitemap index file
       index_file = Tempfile.new([@index_filename,".xml"])
-      index_file.write(create_sitemap_index(files).to_xml)
+      index_file.write(create_sitemap_index(@sm_files).to_xml)
       index_file.rewind
 
       # wrap them all into a zip file
+      puts "SM Files #{@sm_files.inspect}"
       Zip::File.open(zip_file.path, Zip::File::CREATE) do |zip|
-        files.each_with_index do |file,k|
+        @sm_files.each_with_index do |file,k|
+          puts "file: #{file.inspect}"
+          puts "SM FIle Num: #{@sm_file_num}"
+
           zip.add("#{@sitemap_filename_prefix}#{k}.xml", file.path)
         end
         zip.add("#{@index_filename}.xml", index_file.path)
@@ -158,7 +128,7 @@ class AspaceSitemapRunner < JobRunner
       # these files will then be copied into the root directory on creation and on startup of the app
       # startup copy happens in public/plugin_init.rb
       if @json.job['sitemap_use_filesys']
-        write_to_filesystem(files,index_file,get_rails_root_from_filesys)
+        write_to_filesystem(@sm_files, index_file, get_rails_root_from_filesys)
       end
 
       # close it out
@@ -170,7 +140,7 @@ class AspaceSitemapRunner < JobRunner
       @job.write_output(e.backtrace)
       raise e
     ensure
-      files.each do |file|
+      @sm_files.each do |file|
         file.close
         file.unlink
       end
@@ -181,6 +151,47 @@ class AspaceSitemapRunner < JobRunner
       @job.write_output('Done.')
     end
   end
+
+  def write_sm_temp_file(sm_array)
+    @sm_files[@sm_file_num] = Tempfile.new(["#{@sitemap_filename_prefix}#{@sm_file_num}", ".xml"])
+    @sm_files[@sm_file_num].write(create_sitemap_file(sm_array, @refresh_freq).to_xml)
+    @sm_files[@sm_file_num].rewind
+    @sm_file_num += 1
+  end
+
+  def finalize_sm_batch(sm_array, pub_repos)
+    hua_deletes = []
+
+    # select published objects that can have ancestors so we can check them for unpubbed ancestors
+    has_ancs = sm_array.select { |row| AppConfig[:sitemap_has_ancestor_types].include?(row[:source]) }
+    
+    @job.write_output("Checking for unpublished ancestors for batch #{@sm_file_num}")
+    
+    # use 25 for group size, though maybe tune this depending on memory?
+    # build a list of objects with unpubbed ancestors
+    has_ancs.each_slice(25).with_index do |group,i|
+      if i % 400 == 0 && i != 0
+        @job.write_output("Still checking for unpublished ancestors for batch #{@sm_file_num}")
+      end
+      hua_deletes.concat(has_unpublished_ancestor(group))
+    end
+    
+    # remove the objects with unpubbed ancestors from our list of published objects
+    # also check for objects that are scoped to a repo but live in an unpubbed repo and remove those
+    # do we really need to inform the end user about items not included? Useful or clutter?
+    sm_array.delete_if do |row|
+      next if AppConfig[:sitemap_agent_types].include?(row[:source])
+      if !pub_repos.include?(row[:repo_id].to_i)
+        @job.write_output("Sitemap will not include /repositories/#{row[:repo_id]}/#{row[:source]}/#{row[:id]} since it is part of an unpublished repository")
+        true
+      elsif hua_deletes.include?(row[:uri])
+        @job.write_output("Sitemap will not include /repositories/#{row[:repo_id]}/#{row[:source]}/#{row[:id]} since it has an unpublished ancestor")
+        true
+      end
+    end
+
+    write_sm_temp_file(sm_array)
+  end
   
   def get_rails_root_from_filesys
     File.open(File.join("#{ASUtils.find_local_directories(nil, 'aspace_sitemap').shift}","frontend","rails_path_to_pui.txt"), "r") do |f|
@@ -188,7 +199,7 @@ class AspaceSitemapRunner < JobRunner
     end
   end
   
-  def write_to_filesystem(files,index_file,rails_root_from_pui)
+  def write_to_filesystem(files, index_file, rails_root_from_pui)
     files.each_with_index do |file,k|
       FileUtils.cp(file, File.join("#{@static_page_loc}","#{@sitemap_filename_prefix}#{k}.xml"))
     end

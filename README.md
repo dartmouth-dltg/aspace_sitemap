@@ -2,8 +2,9 @@
 
 ## Getting started
 
-Download and unpack the latest release of the plugin into your
-ArchivesSpace plugins directory:
+Download and unpack the latest release (suitable for the version of
+ArchivesSpace you are running) of the plugin  into your ArchivesSpace
+plugins directory:
 
 ```
     $ curl ...
@@ -57,7 +58,48 @@ For users with access to `Background Jobs`, there is a new entry in the `Create 
 and placed at the root of the site ie: `{pui_host}/sitemap-index.xml` It also updates the robots.txt file in the PUI to include the sitemap entry. Any existing sitemaps are copied to the 
 PUI webroot on startup and the robots.txt file is updated on startup if there are existing sitemap files. Uncheck this option and fill in the sitemap index base url entry (below) if you want to host the sitemaps on an external server.
 5. The sitemap index base url. This is the location where you will be hosting the sitemaps. It is ignored if write to filesystem (above) is selected.
-6. The limit on the number of entries per sitemap file. You should be able to leave this at the default of 50000.
+6. The limit on the number of entries per sitemap file. You should be able to leave this at the default of `20000`, but can raise it to the maximum of `50000`.
+
+## Cron Job
+The plugin also sets up a weekly cron job that runs the sitemap job once a week. This is configurable
+with the following defaults set
+
+```
+  # This is checked set to a absolute maximum of 50000
+  AppConfig[:aspace_sitemap_default_limit] = 20000
+
+  AppConfig[:aspace_sitemap_use_slugs] = false
+
+  AppConfig[:aspace_sitemap_use_filesystem] = true
+
+  AppConfig[:aspace_sitemap_default_frequency] = 'yearly'
+
+  # This isn't really used *except* to allow the job to be scoped
+  # The sitemap scans *all* repos that are public
+  AppConfig[:aspace_sitemap_default_repo_id] = 2
+
+  AppConfig[:aspace_sitemap_default_base_url] = nil
+
+  AppConfig[:aspace_sitemap_cron] = "0 1 * * 7" # every Saturday at 1 am
+```
+
+You can also configure which object types are part of the sitemap. Note that the mapping
+for specific object types *must* remain as shown. You can omit whichever object types
+you do *not* want in the sitemap. The default mapping is
+
+```
+AppConfig[:allowed_sitemap_types_hash] = {
+    'resource' => 'resources',
+    'accession' => 'accessions',
+    'archival_object' => 'archival_objects',
+    'digital_object' => 'digital_objects',
+    'digital_object_component' => 'digital_object_components',
+    'agent_person' => 'people', 
+    'agent_family' => 'families',
+    'agent_corporate_entity' => 'corporate_entities',
+    'agent_software' => 'software'
+}
+```
 
 ## Notes
 1. The 'priority' attribute is not used in the sitemap since there is no mechanism in place to mark
