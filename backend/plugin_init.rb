@@ -74,8 +74,8 @@ ArchivesSpaceService.settings.scheduler.cron(AppConfig[:aspace_sitemap_cron], :a
   staff_user = User.find(:username => AppConfig[:staff_username])
 
   Job.create_from_json(sitemap_cron_job,
-    {:user => staff_user, 
-      :repo_id => AppConfig[:aspace_sitemap_default_repo_id]} )
+                      { :user => staff_user, 
+                        :repo_id => AppConfig[:aspace_sitemap_default_repo_id]} )
 
 end
 
