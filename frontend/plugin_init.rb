@@ -5,5 +5,13 @@ require_relative 'helpers/aspace_form_helper'
 Rails.application.config.after_initialize do
   AppConfig[:allowed_sitemap_types] = ['resource','accession','archival_object','digital_object','digital_object_component','agent_person','agent_family','agent_corporate_entity','agent_software']
   AppConfig[:sitemap_frequencies] = ['yearly', 'monthly', 'daily', 'hourly', 'always', 'never']
-  AppConfig[:aspace_sitemap_default_limit] = 50000
+  # 10-20k is a best guess limit for performance
+  unless AppConfig.has_key?(:aspace_sitemap_default_limit)
+    AppConfig[:aspace_sitemap_default_limit] = 20000
+  end
+
+  # absolute limit is 50k
+  if AppConfig[:aspace_sitemap_default_limit] > 50000
+    AppConfig[:aspace_sitemap_default_limit] = 50000
+  end
 end
