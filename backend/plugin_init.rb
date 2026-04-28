@@ -67,7 +67,7 @@ ArchivesSpaceService.settings.scheduler.cron(AppConfig[:aspace_sitemap_cron], :a
     "sitemap_baseurl" => AppConfig[:aspace_sitemap_default_base_url]
   }
 
-  sitemap_cron_job = JSONModel(:job).from_hash(:job_type => 'aspace_sitemap_jon',
+  sitemap_cron_job = JSONModel(:job).from_hash(:job_type => 'aspace_sitemap_job',
                                      :job => sitemap_job,
                                      :job_params =>  ASUtils.to_json(nil) )
   
