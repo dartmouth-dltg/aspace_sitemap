@@ -58,7 +58,7 @@ ArchivesSpaceService.settings.scheduler.cron(AppConfig[:aspace_sitemap_cron], :a
     "format" => "zip",
     "job_type" => "aspace_sitemap_job",
     "jsonmodel_type" => "aspace_sitemap_job",
-    "sitemap_types" =>  sitemap_types,
+    "sitemap_types" => AppConfig[:allowed_sitemap_types_hash].keys,
     "sitemap_refresh_freq" => AppConfig[:aspace_sitemap_default_frequency],
     "sitemap_use_filesys" => AppConfig[:aspace_sitemap_use_filesystem],
     "sitemap_limit" => AppConfig[:aspace_sitemap_default_limit].to_s,
