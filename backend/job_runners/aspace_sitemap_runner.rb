@@ -123,7 +123,7 @@ class AspaceSitemapRunner < JobRunner
 
       # wrap them all into a zip file
       @job.write_output("SM Files: #{@sm_files.inspect}")
-      Zip::File.open(zip_file.path, create: true) do |zip|
+      Zip::File.open(zip_file.path, Zip::File::CREATE) do |zip|
         @sm_files.each_with_index do |file, k|
           @job.write_output("Adding file: #{file.inspect}")
           @job.write_output("SM File Num: #{@sm_file_num}")
