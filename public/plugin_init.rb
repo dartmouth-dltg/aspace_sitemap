@@ -1,5 +1,54 @@
 Plugins::extend_aspace_routes(File.join(File.dirname(__FILE__), "routes.rb"))
 
+  AI_BOTS = [
+    { name: "OpenAI - GPTBot",              ua: "GPTBot" },
+    { name: "OpenAI - ChatGPT browsing",    ua: "ChatGPT-User" },
+    { name: "OpenAI - OAI-SearchBot",       ua: "OAI-SearchBot" },
+    { name: "Anthropic - ClaudeBot",        ua: "ClaudeBot" },
+    { name: "Anthropic - Claude-Web",       ua: "Claude-Web" },
+    { name: "Google - Gemini/Bard training",ua: "Google-Extended" },
+    { name: "Meta - FacebookBot",           ua: "FacebookBot" },
+    { name: "Apple - Applebot-Extended",    ua: "Applebot-Extended" },
+    { name: "Common Crawl",                 ua: "CCBot" },
+    { name: "Cohere AI",                    ua: "cohere-ai" },
+    { name: "Perplexity",                   ua: "PerplexityBot" },
+    { name: "You.com",                      ua: "YouBot" },
+    { name: "Diffbot",                      ua: "Diffbot" },
+    { name: "ByteDance - Bytespider",       ua: "Bytespider" },
+    { name: "Amazon - Alexa AI",            ua: "Amazonbot" },
+    { name: "Timpibot",                     ua: "Timpibot" },
+    { name: "ImagesiftBot",                 ua: "ImagesiftBot" },
+    { name: "SleepBot",                     ua: "SleepBot" },
+    { name: "Semrush",                      ua: "SemrushBot" },
+
+  ].freeze
+
+  def generate_robots_txt
+    lines = []
+
+    lines << ""
+    lines << "# AI/LLM crawlers blocked, search engines allowed"
+    lines << "# Generated on #{Time.now.strftime('%Y-%m-%d')}"
+    lines << ""
+    lines << "# Block all AI / LLM training crawlers"
+    lines << ""
+
+    AI_BOTS.each do |bot|
+      lines << "# #{bot[:name]}"
+      lines << "User-agent: #{bot[:ua]}"
+      lines << "Disallow: /"
+      lines << ""
+    end
+
+    lines << "# Allow all standard search engines"
+    lines << ""
+    lines << "User-agent: *"
+    lines << "Allow: /"
+    lines << ""
+
+    lines.join("\n")
+  end
+
 Rails.application.config.after_initialize do
   # copy the sitemaps into the WAR space
   if Rails.root.basename.to_s == 'WEB-INF'  # only need to do this when running out of unpacked .war
@@ -29,6 +78,12 @@ Rails.application.config.after_initialize do
         }
       end
       p "*********    updated #{robtxt} with sitemap entry for #{sitemap_index} ****** "
+    end
+
+    if robtxt.exist? && robtxt.file?
+      File.open(robtxt, 'a') { |f|
+        f.write(generate_robots_txt)
+      }
     end
   end
 end
