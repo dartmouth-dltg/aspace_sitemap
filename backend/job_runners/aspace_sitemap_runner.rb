@@ -197,22 +197,30 @@ class AspaceSitemapRunner < JobRunner
     write_sm_temp_file(sm_array)
   end
 
+  # the PUI writes its rails root to this file when it boots; it may not exist yet
+  # if the PUI has not started since the plugin was installed
   def get_rails_root_from_filesys
-    File.open(File.join("#{ASUtils.find_local_directories(nil, 'aspace_sitemap').shift}", "frontend", "rails_path_to_pui.txt"), "r") do |f|
-      return f.read.strip
-    end
+    path = File.join("#{ASUtils.find_local_directories(nil, 'aspace_sitemap').shift}", "frontend", "rails_path_to_pui.txt")
+    File.exist?(path) ? File.read(path).strip : nil
+  end
+
+  # remove sitemap parts left over from earlier runs that produced more parts
+  def remove_stale_parts(dir)
+    Dir.glob(File.join(dir.to_s, "#{@sitemap_filename_prefix}*.xml")).each { |f| File.delete(f) }
   end
 
   def write_to_filesystem(files, index_file, rails_root_from_pui)
+    remove_stale_parts(@static_page_loc)
     files.each_with_index do |file, k|
       FileUtils.cp(file, File.join("#{@static_page_loc}", "#{@sitemap_filename_prefix}#{k}.xml"))
     end
     FileUtils.cp(index_file, File.join("#{@static_page_loc}", "#{@index_filename}.xml"))
 
     # write to war space
-    if rails_root_from_pui.end_with? 'WEB-INF'
+    if rails_root_from_pui.to_s.end_with? 'WEB-INF'
       dest = Pathname.new(rails_root_from_pui)
       if dest.directory? && dest.writable?
+        remove_stale_parts(dest.dirname)
         files.each_with_index do |file, k|
           FileUtils.cp(file, File.join("#{dest.dirname}", "#{@sitemap_filename_prefix}#{k}.xml"))
         end
@@ -233,7 +241,11 @@ class AspaceSitemapRunner < JobRunner
           end
           @job.write_output("Updated robots.txt with entry for #{sitemaps_root_loc}")
         end
+      else
+        @job.write_output("PUI webroot #{dest} is not writable; sitemaps saved to #{@static_page_loc} only and will be copied on the next PUI start.")
       end
+    else
+      @job.write_output("PUI has not recorded its webroot yet; sitemaps saved to #{@static_page_loc} only and will be copied on the next PUI start.")
     end
   end
 
