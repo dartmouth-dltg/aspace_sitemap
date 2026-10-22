@@ -1,5 +1,3 @@
-Plugins::extend_aspace_routes(File.join(File.dirname(__FILE__), "routes.rb"))
-
   AI_BOTS = [
     { name: "OpenAI - GPTBot",              ua: "GPTBot" },
     { name: "OpenAI - ChatGPT browsing",    ua: "ChatGPT-User" },
@@ -20,7 +18,6 @@ Plugins::extend_aspace_routes(File.join(File.dirname(__FILE__), "routes.rb"))
     { name: "ImagesiftBot",                 ua: "ImagesiftBot" },
     { name: "SleepBot",                     ua: "SleepBot" },
     { name: "Semrush",                      ua: "SemrushBot" },
-
   ].freeze
 
   def generate_robots_txt
@@ -69,9 +66,9 @@ Rails.application.config.after_initialize do
     if robtxt.exist? && robtxt.file? && sitemap_index.exist? && sitemap_index.file? && dest.directory? && dest.writable?
       sitemap_root_loc = File.join("#{AppConfig[:public_proxy_url]}","sitemap-index.xml")
       p "*********    #{robtxt} and #{sitemap_index} exist: checking for sitemap entry ****** "
-      if File.foreach(robtxt).detect { |line| line =~ /sitemap/i }
+      if File.foreach(robtxt).detect { |line| line =~ /^\s*sitemap:/i }
         contents = File.read(robtxt)
-        File.write(robtxt, contents.gsub(/sitemap.*$/i, "Sitemap: #{sitemap_root_loc}\n"))
+        File.write(robtxt, contents.gsub(/^\s*sitemap:.*$/i, "Sitemap: #{sitemap_root_loc}"))
       else
         File.open(robtxt, 'a') { |f|
           f.write("\nSitemap: #{sitemap_root_loc}\n")
@@ -80,7 +77,8 @@ Rails.application.config.after_initialize do
       p "*********    updated #{robtxt} with sitemap entry for #{sitemap_index} ****** "
     end
 
-    if robtxt.exist? && robtxt.file?
+    # only append the bot rules once; they would otherwise be duplicated on every restart
+    if robtxt.exist? && robtxt.file? && !File.read(robtxt).include?("# AI/LLM crawlers blocked")
       File.open(robtxt, 'a') { |f|
         f.write(generate_robots_txt)
       }

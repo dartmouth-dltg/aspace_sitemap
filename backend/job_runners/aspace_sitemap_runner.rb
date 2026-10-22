@@ -18,22 +18,22 @@ class AspaceSitemapRunner < JobRunner
     sitemap_index_base_url = @json.job['sitemap_baseurl']
 
     # check to make sure either that write to filesystem is selected or the sitemap base url is available
-    if sitemap_index_base_url.nil? && @json.job['sitemap_use_filesys'] == false
+    sitemap_index_base_url = nil if sitemap_index_base_url.to_s.strip.empty?
+    if sitemap_index_base_url.nil? && !@json.job['sitemap_use_filesys']
       @job.write_output('Either "write to filesystem" must be selected or you must supply a sitemap base url. No sitemap generated.')
       return
     end
 
     unless sitemap_index_base_url.nil?
       # make sure the sitemap url ends in a "/"
-      unless sitemap_index_base_url[-1] == "/"
-        sitemap_index_base_url += "/"
-      end
+      sitemap_index_base_url = sitemap_index_base_url.strip
+      sitemap_index_base_url += "/" unless sitemap_index_base_url.end_with?("/")
       # make sure the sitemap url starts with https://
-      unless sitemap_index_base_url =~ /^https:\/\//
-        if sitemap_index_base_url =~ /^http:\/\//
-          sitemap_index_base_url.gsub!('http', 'https')
+      unless sitemap_index_base_url.start_with?("https://")
+        if sitemap_index_base_url.start_with?("http://")
+          sitemap_index_base_url = sitemap_index_base_url.sub(/\Ahttp:/, 'https:')
         else
-          sitemap_index_base_url.prepend('https://')
+          sitemap_index_base_url = "https://#{sitemap_index_base_url}"
         end
       end
     end
@@ -145,7 +145,7 @@ class AspaceSitemapRunner < JobRunner
       self.success!
     rescue StandardError => e
       @job.write_output(e.message)
-      @job.write_output(e.backtrace)
+      @job.write_output(e.backtrace.join("\n"))
       raise e
     ensure
       @sm_files&.each { |f| f&.close; f&.unlink }
@@ -224,9 +224,9 @@ class AspaceSitemapRunner < JobRunner
         if robtxt.exist? && robtxt.file?
           @job.write_output("Checking robots.txt for sitemap entry")
           sitemaps_root_loc = "#{@pui_base_url}#{@index_filename}.xml"
-          if File.foreach(robtxt).detect { |line| line =~ /sitemap/i }
+          if File.foreach(robtxt).detect { |line| line =~ /^\s*sitemap:/i }
             contents = File.read(robtxt)
-            File.write(robtxt, contents.gsub(/sitemap.*$/i, "Sitemap: #{sitemaps_root_loc}\n"))
+            File.write(robtxt, contents.gsub(/^\s*sitemap:.*$/i, "Sitemap: #{sitemaps_root_loc}"))
           else
             # FIX: was incorrectly appending .xml to a string already ending in .xml
             File.open(robtxt, 'a') { |f| f.write("\nSitemap: #{sitemaps_root_loc}\n") }
@@ -285,17 +285,16 @@ class AspaceSitemapRunner < JobRunner
     end
     # use slugs if set, otherwise use the standard url form based on ids
     if @use_slugs && !row[:slug].nil?
-      # agents have a different location string pattern
-      if AppConfig[:sitemap_agent_types].include?(row[:source])
-        row[:source] = "agents"
-      end
-      row[:loc] = "#{@pui_base_url_chopped}/#{row[:source]}/#{row[:slug]}"
+      # agents have a different location string pattern; leave row[:source] alone
+      # since finalize_sm_batch still uses it to recognise agent rows
+      loc_source = AppConfig[:sitemap_agent_types].include?(row[:source]) ? "agents" : row[:source]
+      row[:loc] = "#{@pui_base_url_chopped}/#{loc_source}/#{row[:slug]}"
     else
       row[:loc] = "#{@pui_base_url_chopped}/#{row[:uri]}"
     end
     # pop a "/" on the front of the uri for use later
     row[:uri].prepend("/")
-    row[:lastmod] = row[:lastmod].strftime("%Y-%m-%d")
+    row[:lastmod] = (row[:lastmod] || Time.now).strftime("%Y-%m-%d")
 
     # remove columns we don't need
     row.delete(:publish)
@@ -311,10 +310,13 @@ class AspaceSitemapRunner < JobRunner
     @sitemap_types.each do |type|
       # agents don't have a repo_id so we have to supply one to make the columns match up
       if type.include?('agent')
-        repo_line = "'0' AS repo_id"
+        repo_line = "0 AS repo_id"
       else
         repo_line = "repo_id"
       end
+
+      # suppressed records can keep publish = 1 but are not shown in the PUI (agents are not suppressible)
+      suppressed_line = type.include?('agent') ? "" : "AND suppressed = 0"
 
       queries <<
         "(SELECT
@@ -327,7 +329,7 @@ class AspaceSitemapRunner < JobRunner
           FROM
             #{type}
           WHERE
-            publish = 1)"
+            publish = 1 #{suppressed_line})"
     end
 
     # FIX: added spaces around UNION to prevent invalid SQL like `(...)UNION(...)`

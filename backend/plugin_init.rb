@@ -52,31 +52,34 @@ unless AppConfig.has_key?(:aspace_sitemap_cron)
   AppConfig[:aspace_sitemap_cron] = "0 1 * * 7" # every Saturday at 1 am
 end
 
-ArchivesSpaceService.settings.scheduler.cron(AppConfig[:aspace_sitemap_cron], :allow_overlapping => false) do  
+# the scheduler only exists in production
+if ArchivesSpaceService.settings.respond_to?(:scheduler)
+  ArchivesSpaceService.settings.scheduler.cron(AppConfig[:aspace_sitemap_cron], :allow_overlapping => false) do  
 
-  sitemap_job = {
-    "format" => "zip",
-    "job_type" => "aspace_sitemap_job",
-    "jsonmodel_type" => "aspace_sitemap_job",
-    "sitemap_types" => AppConfig[:allowed_sitemap_types_hash].keys,
-    "sitemap_refresh_freq" => AppConfig[:aspace_sitemap_default_frequency],
-    "sitemap_use_filesys" => AppConfig[:aspace_sitemap_use_filesystem],
-    "sitemap_limit" => AppConfig[:aspace_sitemap_default_limit].to_s,
-    "sitemap_use_slugs" => AppConfig[:aspace_sitemap_use_slugs],
-    "repo_id" => AppConfig[:aspace_sitemap_default_repo_id],
-    "sitemap_baseurl" => AppConfig[:aspace_sitemap_default_base_url]
-  }
+    sitemap_job = {
+      "format" => "zip",
+      "job_type" => "aspace_sitemap_job",
+      "jsonmodel_type" => "aspace_sitemap_job",
+      "sitemap_types" => AppConfig[:allowed_sitemap_types_hash].keys,
+      "sitemap_refresh_freq" => AppConfig[:aspace_sitemap_default_frequency],
+      "sitemap_use_filesys" => AppConfig[:aspace_sitemap_use_filesystem],
+      "sitemap_limit" => AppConfig[:aspace_sitemap_default_limit].to_s,
+      "sitemap_use_slugs" => AppConfig[:aspace_sitemap_use_slugs],
+      "repo_id" => AppConfig[:aspace_sitemap_default_repo_id],
+      "sitemap_baseurl" => AppConfig[:aspace_sitemap_default_base_url]
+    }
 
-  sitemap_cron_job = JSONModel(:job).from_hash(:job_type => 'aspace_sitemap_job',
-                                     :job => sitemap_job,
-                                     :job_params =>  ASUtils.to_json(nil) )
+    sitemap_cron_job = JSONModel(:job).from_hash(:job_type => 'aspace_sitemap_job',
+                                       :job => sitemap_job,
+                                       :job_params =>  ASUtils.to_json(nil) )
   
-  staff_user = User.find(:username => AppConfig[:staff_username])
+    staff_user = User.find(:username => AppConfig[:staff_username])
 
-  Job.create_from_json(sitemap_cron_job,
-                      { :user => staff_user, 
-                        :repo_id => AppConfig[:aspace_sitemap_default_repo_id]} )
+    Job.create_from_json(sitemap_cron_job,
+                        { :user => staff_user, 
+                          :repo_id => AppConfig[:aspace_sitemap_default_repo_id]} )
 
+  end
 end
 
 # create the pui sitemaps directory if it does not already exist
