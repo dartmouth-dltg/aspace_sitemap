@@ -232,9 +232,9 @@ class AspaceSitemapRunner < JobRunner
         if robtxt.exist? && robtxt.file?
           @job.write_output("Checking robots.txt for sitemap entry")
           sitemaps_root_loc = "#{@pui_base_url}#{@index_filename}.xml"
-          if File.foreach(robtxt).detect { |line| line =~ /^\s*sitemap:/i }
+          if File.foreach(robtxt).detect { |line| line =~ /^[ \t]*sitemap:/i }
             contents = File.read(robtxt)
-            File.write(robtxt, contents.gsub(/^\s*sitemap:.*$/i, "Sitemap: #{sitemaps_root_loc}"))
+            File.write(robtxt, contents.gsub(/^[ \t]*sitemap:.*$/i, "Sitemap: #{sitemaps_root_loc}"))
           else
             # FIX: was incorrectly appending .xml to a string already ending in .xml
             File.open(robtxt, 'a') { |f| f.write("\nSitemap: #{sitemaps_root_loc}\n") }

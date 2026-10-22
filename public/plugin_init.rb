@@ -66,9 +66,9 @@ Rails.application.config.after_initialize do
     if robtxt.exist? && robtxt.file? && sitemap_index.exist? && sitemap_index.file? && dest.directory? && dest.writable?
       sitemap_root_loc = File.join("#{AppConfig[:public_proxy_url]}","sitemap-index.xml")
       p "*********    #{robtxt} and #{sitemap_index} exist: checking for sitemap entry ****** "
-      if File.foreach(robtxt).detect { |line| line =~ /^\s*sitemap:/i }
+      if File.foreach(robtxt).detect { |line| line =~ /^[ \t]*sitemap:/i }
         contents = File.read(robtxt)
-        File.write(robtxt, contents.gsub(/^\s*sitemap:.*$/i, "Sitemap: #{sitemap_root_loc}"))
+        File.write(robtxt, contents.gsub(/^[ \t]*sitemap:.*$/i, "Sitemap: #{sitemap_root_loc}"))
       else
         File.open(robtxt, 'a') { |f|
           f.write("\nSitemap: #{sitemap_root_loc}\n")
