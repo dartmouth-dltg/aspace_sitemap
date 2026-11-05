@@ -14,7 +14,7 @@ AppConfig[:allowed_sitemap_types_hash] = {'resource' => 'resources',
                                           }
 AppConfig[:sitemap_has_ancestor_types] = ['archival_objects','digital_object_components']
 AppConfig[:sitemap_agent_types] = ['people','families','corporate_entities','software']
-AppConfig[:sitemap_frequencies] = ['yearly', 'monthly', 'daily', 'hourly', 'always', 'never']
+AppConfig[:sitemap_frequencies] = ['yearly', 'monthly', 'weekly', 'daily', 'hourly', 'always', 'never']
 
 # 10-20k is a best guess limit for performance
 unless AppConfig.has_key?(:aspace_sitemap_default_limit)
